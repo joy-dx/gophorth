@@ -113,7 +113,7 @@ func (s *UpdaterSvc) Hydrate(ctx context.Context) error {
 	if needUpdateCheck {
 		s.relay.Debug(RlyUpdaterLog{Msg: "update has crossed check interval, checking in BG"})
 		go func() {
-			if _, checkErr := s.CheckUpdate(ctx); checkErr != nil {
+			if _, checkErr := s.CheckLatest(ctx); checkErr != nil {
 				s.relay.Debug(RlyUpdaterLog{Msg: fmt.Sprintf("problem checking update in BG: %s", checkErr.Error())})
 
 			}

@@ -113,7 +113,7 @@ var (
 			relaySvc.Info(updater.RlyUpdaterLog{Msg: fmt.Sprintf("current app version is: %s", BuildID)})
 			relaySvc.Info(updater.RlyUpdaterLog{Msg: fmt.Sprintf("looking for %s %s", cfgSvc.Updater.Platform, cfgSvc.Updater.Architecture)})
 
-			latestVersion, err := updaterSvc.CheckUpdate(ctx)
+			latestVersion, err := updaterSvc.CheckLatest(ctx)
 			if err != nil {
 				log.Fatal(fmt.Errorf("problem checking for latest version: %w", err))
 			}

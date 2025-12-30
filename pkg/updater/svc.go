@@ -39,7 +39,7 @@ type UpdaterSvc struct {
 	contextUpdate *releaserdto.ReleaseAsset
 }
 
-func (s *UpdaterSvc) CheckUpdate(ctx context.Context) (releaserdto.ReleaseAsset, error) {
+func (s *UpdaterSvc) CheckLatest(ctx context.Context) (releaserdto.ReleaseAsset, error) {
 
 	if s.cfg.CheckClient == nil {
 		return releaserdto.ReleaseAsset{}, errors.New("no check client configured")

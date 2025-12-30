@@ -8,12 +8,15 @@ import (
 	"github.com/joy-dx/gophorth/pkg/releaser/releaserdto"
 )
 
-type UpdatesInterface interface {
+type UpdaterInterface interface {
 	CheckLatest(ctx context.Context) (releaserdto.ReleaseAsset, error)
+	DownloadUpdate(ctx context.Context, link *releaserdto.ReleaseAsset) error
 	Hydrate(ctx context.Context) error
 	PerformUpdate(ctx context.Context) error
 	PostInstallCleanup() error
 	State() *UpdaterState
+	Status() UpdateStatus
+	UpdateLog() string
 }
 
 type CheckClientInterface interface {
