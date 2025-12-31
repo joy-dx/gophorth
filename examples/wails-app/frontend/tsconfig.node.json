@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "composite": true,
+    "module": "ESNext",
+    "moduleResolution": "Node",
+    "allowSyntheticDefaultImports": true,
+    "paths": {
+      "@/*": ["./src/*"],
+      "@lib": ["./src/lib"],
+      "@wails/*": ["./wailsjs/*"],
+      "@wailsapi/*": ["./wailsjs/go/main/*"],
+      "@wailsmodels": ["./wailsjs/go/models"],
+      "@wailsrun/*": ["./wailsjs/runtime/*"]
+    }
+  },
+  "include": [
+    "vite.config.ts"
+  ]
+}
