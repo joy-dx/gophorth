@@ -5,7 +5,7 @@ go 1.25.5
 require (
 	github.com/Masterminds/semver/v3 v3.4.0
 	github.com/go-viper/mapstructure/v2 v2.4.0
-	github.com/joy-dx/gophorth v0.1.4
+	github.com/joy-dx/gophorth v0.1.7
 	github.com/spf13/viper v1.21.0
 	github.com/wailsapp/wails/v2 v2.11.0
 )
