@@ -42,6 +42,7 @@ var assets embed.FS
 
 var (
 	BuildID = "0.0.1"
+	Variant = ""
 )
 
 func main() {
@@ -150,12 +151,12 @@ func main() {
 		}
 
 		log.Println("running custom update function")
-		os.Exit(0)
 		return nil
 	}
 
 	// Update Client
 	logPath, logPathErr := filepath.Abs(workingDir + "/update.log")
+	relaySvc.Debug(relaydto.RlyLog{Msg: fmt.Sprintf("using %s as update log path", logPath)})
 	if logPathErr != nil {
 		log.Fatal(logPathErr)
 	}
@@ -166,7 +167,8 @@ func main() {
 		WithVersion(BuildID).
 		WithPublicKeyPath(workingDir + "/embedded/public-pgp.key").
 		WithUpdateLogPath(logPath).
-		WithPrepareFunc(prepareFunc)
+		WithPrepareFunc(prepareFunc).
+		WithVariant(Variant)
 
 	updaterSvc := updater.ProvideUpdaterSvc(&cfgSvc.Updater)
 	if err := updaterSvc.Hydrate(ctx); err != nil {
@@ -237,6 +239,6 @@ func getWorkingDir() (string, error) {
 		exePath = filepath.Dir(contents)
 	}
 
-	return filepath.Dir(exePath), nil
+	return exePath, nil
 
 }

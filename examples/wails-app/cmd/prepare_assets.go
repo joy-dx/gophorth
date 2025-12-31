@@ -79,7 +79,7 @@ func main() {
 		WithOutputPath("./assets").
 		WithPrivateKeyPath("./embedded/private-pgp.key").
 		WithTargetPath("./assets").
-		WithFilePattern("wails-app-{platform}-{arch}").
+		WithFilePattern("wails-app-{platform}-{arch}{variant}").
 		WithDownloadPrefix("http://localhost:8080/").
 		WithAllowAnyExtension(true)
 
