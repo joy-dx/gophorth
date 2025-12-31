@@ -48,6 +48,11 @@ func (s *ReleaserSvc) ScanDir() ([]releaserdto.ReleaseAsset, error) {
 		}
 
 		name := e.Name()
+		// Skip signature files that may be present
+		if strings.HasSuffix(name, ".asc") || strings.HasSuffix(name, ".asc.sig") {
+			continue
+		}
+
 		matches := re.FindStringSubmatch(name)
 		if matches == nil {
 			if s.cfg.Strict {
@@ -120,23 +125,18 @@ func (s *ReleaserSvc) compileReverseTemplate() (*regexp.Regexp, error) {
 		return nil, errors.New("pattern must not be empty")
 	}
 
-	// Default rules. Adjust as needed for your ecosystem.
 	var versionRule string
 	if s.cfg.RequireVersion {
-		// Required: leading dash and version body
-		// Accepts digits with dots, plus optional pre-release/build metadata
-		// Examples: -1.2.3, -2.0.0-rc.1, -2024.10.0+build.5
 		versionRule = `-[0-9]+(?:\.[0-9A-Za-z]+)*(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?`
 	} else {
-		// Optional version with leading dash when present
 		versionRule = `(?:-[0-9]+(?:\.[0-9A-Za-z]+)*(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?)?`
 	}
 
 	rules := map[string]string{
-		"platform": `[a-z0-9]+`,            // linux, darwin, windows, etc.
-		"arch":     `[A-Za-z0-9_]+`,        // amd64, arm64, x86_64, etc.
-		"variant":  `(?:-[A-Za-z0-9._]+)?`, // "", "-webkit241", "-standard", ...
-		"version":  versionRule,            // see above
+		"platform": `[a-z0-9]+`,
+		"arch":     `[A-Za-z0-9_]+`,
+		"variant":  `(?:-[A-Za-z0-9._]+)?`,
+		"version":  versionRule,
 	}
 
 	var b strings.Builder
@@ -181,7 +181,8 @@ func (s *ReleaserSvc) compileReverseTemplate() (*regexp.Regexp, error) {
 	}
 
 	if s.cfg.AllowAnyExtension {
-		// Allow ".zip", ".tar.gz", etc. after the pattern
+		// Allow ".zip", ".tar.gz", etc. after the pattern.
+		// .asc/.asc.sig are filtered by caller since Go regex lacks lookarounds.
 		b.WriteString(`(?:\.[A-Za-z0-9]+(?:\.[A-Za-z0-9]+)*)?`)
 	}
 
