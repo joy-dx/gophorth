@@ -235,8 +235,9 @@ func getWorkingDir() (string, error) {
 
 	// If running on mac (within a .app) skip up to directory levels
 	if runtime.GOOS == "darwin" {
-		contents := filepath.Dir(exePath)
-		exePath = filepath.Dir(contents)
+		exePath = filepath.Dir(exePath)
+		exePath = filepath.Dir(exePath)
+		exePath = filepath.Dir(exePath)
 	}
 
 	return exePath, nil

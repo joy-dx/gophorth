@@ -91,11 +91,13 @@ func (s *ReleaserSvc) ScanDir() ([]releaserdto.ReleaseAsset, error) {
 		if foundVersion != "" {
 			version = foundVersion
 		}
+
+		variant := strings.TrimLeft(g["variant"], "/-_")
 		out = append(out, releaserdto.ReleaseAsset{
 			ArtefactName: filepath.Base(fullPath),
 			Platform:     g["platform"],
 			Arch:         g["arch"],
-			Variant:      g["variant"],
+			Variant:      variant,
 			Version:      version,
 			SizeBytes:    info.Size(),
 			Checksum:     checksum,
