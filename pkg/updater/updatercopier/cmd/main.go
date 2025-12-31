@@ -178,6 +178,7 @@ func launchApp(logFile *os.File, path string) error {
 	var cmd *exec.Cmd
 
 	if runtime.GOOS == "darwin" && filepath.Ext(path) == ".app" {
+		logLine(logFile, ".app on darwin detected, using open")
 		// GUI‑friendly macOS launch
 		cmd = exec.Command("open", "-n", path)
 	} else {
