@@ -11,6 +11,7 @@ import (
 	"github.com/joy-dx/gophorth/pkg/file"
 	"github.com/joy-dx/gophorth/pkg/hydrate"
 	"github.com/joy-dx/gophorth/pkg/releaser/releaserdto"
+	"github.com/joy-dx/gophorth/pkg/stringz"
 	"github.com/joy-dx/gophorth/pkg/updater/updaterdto"
 )
 
@@ -33,15 +34,19 @@ func (c *FromGithub) GetRef() string {
 	return c.Ref
 }
 
-func (c *FromGithub) GetVersionLink() (*releaserdto.ReleaseAsset, error) {
-	return c.FoundVersion, nil
+func (c *FromGithub) GetVersionLink() (releaserdto.ReleaseAsset, error) {
+	return *c.FoundVersion, nil
 }
-func (c *FromGithub) CheckUpdate(ctx context.Context, cfg *updaterdto.UpdaterConfig) error {
+
+// TODO With both reverse template and asset name guesser, refactor combining both
+func (c *FromGithub) CheckUpdate(ctx context.Context, cfg *updaterdto.UpdaterConfig) (releaserdto.ReleaseAsset, error) {
+	asset := releaserdto.ReleaseAsset{}
+
 	if hydrateErr := hydrate.NilCheck("github_check_update", map[string]interface{}{
 		"client": c.cfg.Client,
 		"netSvc": cfg.NetSvc,
 	}); hydrateErr != nil {
-		return hydrateErr
+		return asset, hydrateErr
 	}
 
 	var (
@@ -51,60 +56,110 @@ func (c *FromGithub) CheckUpdate(ctx context.Context, cfg *updaterdto.UpdaterCon
 		err          error
 	)
 
-	versionLink := releaserdto.ReleaseAsset{}
-
 	if c.cfg.Tag != "" {
 		foundRelease, _, err = c.cfg.Client.Repositories.GetReleaseByTag(ctx, c.cfg.Owner, c.cfg.Repo, c.cfg.Tag)
 	} else {
 		foundRelease, _, err = c.cfg.Client.Repositories.GetLatestRelease(ctx, c.cfg.Owner, c.cfg.Repo)
 	}
 	if err != nil {
-		return fmt.Errorf("github release fetch: %w", err)
+		return asset, fmt.Errorf("github release fetch: %w", err)
 	}
 
 	// Pre-release handling
 	if foundRelease.GetPrerelease() && !cfg.AllowPrerelease {
-		return fmt.Errorf("latest is prerelease (%s), but prereleases not allowed", foundRelease.GetTagName())
+		return asset, fmt.Errorf("latest is prerelease (%s), but prereleases not allowed", foundRelease.GetTagName())
 	}
 
 	agentConfig := GithubAgentCfg{
 		NetSvc:        cfg.NetSvc,
 		UpdaterCfg:    updaterdto.UpdaterConfig{},
 		GithubRelease: foundRelease,
-		VersionLink:   &versionLink,
+		VersionLink:   &asset,
 	}
 
 	switch true {
 	case c.cfg.SelectAssetFunc != nil:
 		githubAsset, assetVariant, selErr := c.cfg.SelectAssetFunc(ctx, &agentConfig)
 		if selErr != nil {
-			return selErr
+			return asset, selErr
 		}
 		chosenAsset, variant = githubAsset, assetVariant
 	case c.cfg.SelectAssetPattern != "":
-		// TODO
+		re, compileTemplateErr := stringz.CompileReverseTemplate(stringz.ReverseTemplateOptions{
+			Pattern:           c.cfg.SelectAssetPattern,
+			AllowAnyExtension: true,
+			RequireVersion:    false,
+		})
+		if compileTemplateErr != nil {
+			return asset, compileTemplateErr
+		}
+		githubAsset := releaserdto.ReleaseAsset{
+			Version: foundRelease.GetTagName(),
+		}
+		for idx := range foundRelease.Assets {
+			name := foundRelease.Assets[idx].GetName()
+
+			// Skip signature files that may be present
+			if strings.HasSuffix(name, ".asc") || strings.HasSuffix(name, ".asc.sig") {
+				continue
+			}
+
+			matches := re.FindStringSubmatch(name)
+			if matches == nil {
+				continue
+			}
+
+			groupNames := re.SubexpNames()
+			g := make(map[string]string, len(groupNames))
+			for i, n := range groupNames {
+				if i == 0 || n == "" {
+					continue
+				}
+				g[n] = matches[i]
+			}
+
+			githubAsset.
+				WithArtefactName(name).
+				WithVariant(strings.TrimLeft(g["variant"], "/-_")).
+				WithArch(g["arch"]).
+				WithPlatform(g["platform"]).
+				WithDownloadURL(foundRelease.Assets[idx].GetBrowserDownloadURL()).
+				WithChecksum(foundRelease.Assets[idx].GetDigest()).
+				WithSize(int64(foundRelease.Assets[idx].GetSize()))
+
+			// Check if the asset matches our criteria
+			if cfg.Platform != githubAsset.Platform ||
+				cfg.Architecture != githubAsset.Arch ||
+				cfg.Variant != githubAsset.Variant {
+				continue
+			}
+			c.FoundVersion = &githubAsset
+			return githubAsset, nil
+		}
+
 	default:
 		// Default: best-effort choose asset based on name patterns + cfg.Platform/Architecture
 		githubAsset, variantFound, selectErr := selectGitHubAssetDefault(*cfg, foundRelease.Assets)
 		if selectErr != nil {
-			return fmt.Errorf("github asset selection: %w", selectErr)
+			return asset, fmt.Errorf("github asset selection: %w", selectErr)
 		}
 		chosenAsset, variant = githubAsset, variantFound
 	}
 
 	foundPlatform, foundArchitecture := file.AssetNameGuess(chosenAsset.GetName())
 	if foundPlatform == "" || foundArchitecture == "" {
-		return errors.New("no asset found for platform/architecture")
+		return asset, errors.New("no asset found for platform/architecture")
 	}
 
-	versionLink.WithDownloadURL(chosenAsset.GetBrowserDownloadURL()).
+	asset.WithDownloadURL(chosenAsset.GetBrowserDownloadURL()).
 		WithVariant(variant).
 		WithPlatform(foundPlatform).
 		WithArch(foundArchitecture).
 		WithChecksum(chosenAsset.GetDigest()).
 		WithSize(int64(chosenAsset.GetSize()))
+	c.FoundVersion = &asset
 
-	return nil
+	return asset, nil
 }
 
 func selectGitHubAssetDefault(cfg updaterdto.UpdaterConfig, assets []*github.ReleaseAsset) (*github.ReleaseAsset, string, error) {

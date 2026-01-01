@@ -11,6 +11,7 @@ import (
 
 	"github.com/joy-dx/gophorth/pkg/cryptography"
 	"github.com/joy-dx/gophorth/pkg/releaser/releaserdto"
+	"github.com/joy-dx/gophorth/pkg/stringz"
 )
 
 // ScanDir reads a directory (non-recursive) and returns ReleasesFound entries
@@ -29,7 +30,11 @@ import (
 //     (e.g. "-1.2.3"). Set RequireVersion=true to make it required.
 func (s *ReleaserSvc) ScanDir() ([]releaserdto.ReleaseAsset, error) {
 
-	re, err := s.compileReverseTemplate()
+	re, err := stringz.CompileReverseTemplate(stringz.ReverseTemplateOptions{
+		Pattern:           s.cfg.FilePattern,
+		AllowAnyExtension: s.cfg.AllowAnyExtension,
+		RequireVersion:    s.cfg.RequireVersion,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -48,6 +53,7 @@ func (s *ReleaserSvc) ScanDir() ([]releaserdto.ReleaseAsset, error) {
 		}
 
 		name := e.Name()
+
 		// Skip signature files that may be present
 		if strings.HasSuffix(name, ".asc") || strings.HasSuffix(name, ".asc.sig") {
 			continue
