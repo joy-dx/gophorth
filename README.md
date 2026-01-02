@@ -30,8 +30,6 @@ make generate
 
 ### Preparing your artefacts
 
-The only requirement for the update checker to work properly is to provide a way (during update check) to discern between architecture, platform, and possibly app variants and provide a URL for fetching the artefact
-
 GoPhorth comes with a Releaser service to help prepare meta information about your published artefacts. You can see an [example file here](examples/version-information.json)
 
 ```go
