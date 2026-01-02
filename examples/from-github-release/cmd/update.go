@@ -11,9 +11,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/google/go-github/v74/github"
 	"github.com/joy-dx/gophorth/examples/from-github-release/config"
-	"github.com/joy-dx/gophorth/examples/utils"
+
+	"github.com/google/go-github/v74/github"
 	"github.com/joy-dx/gophorth/pkg/net"
 	"github.com/joy-dx/gophorth/pkg/relay"
 	"github.com/joy-dx/gophorth/pkg/updater"
@@ -31,17 +31,10 @@ var (
 			relaySvc := relay.ProvideRelaySvc(nil)
 			netSvc := net.ProvideNetSvc(nil)
 
-			relaySvc.Info(updater.RlyUpdaterLog{Msg: "Starting updater"})
+			relaySvc.Info(updater.RlyUpdaterLog{Msg: "Starting updater: From-Github-Release"})
 			// Root context cancelled on SIGINT/SIGTERM
 			ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 			defer stop()
-
-			// Serve the assets path update checking
-			go func() {
-				if err := utils.ServeDir(ctx, "localhost:8080", "./cmd/assets"); err != nil {
-					log.Fatal(err)
-				}
-			}()
 
 			// Create an HTTP client with the custom timeout
 			httpClient := &http.Client{
@@ -49,10 +42,22 @@ var (
 			}
 			githubAgent := github.NewClient(httpClient)
 
+			// Getting the signature is simply a matter of suffixing .asc to the URL
+			getSignatureFunction := func(ctx context.Context, cfg *updaterclients.GithubAgentCfg) (string, error) {
+				signatureURL := cfg.VersionLink.DownloadURL + ".asc"
+
+				response, err := cfg.NetSvc.Get(ctx, signatureURL, true)
+				if err != nil {
+					return "", err
+				}
+				return string(response.Body), nil
+			}
+
 			githubClientCfg := updaterclients.DefaultFromGithubConfig()
 			githubClientCfg.WithOwner("joy-dx").
 				WithRepo("app-update-example").
-				WithClient(githubAgent)
+				WithClient(githubAgent).
+				WithGetSignatureFunc(getSignatureFunction)
 			githubClient := updaterclients.NewFromGithub(&githubClientCfg)
 
 			// Update Client

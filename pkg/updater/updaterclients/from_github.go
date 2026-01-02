@@ -8,10 +8,12 @@ import (
 	"strings"
 
 	"github.com/google/go-github/v74/github"
+	"github.com/joy-dx/gophorth/pkg/cryptography"
 	"github.com/joy-dx/gophorth/pkg/file"
 	"github.com/joy-dx/gophorth/pkg/hydrate"
 	"github.com/joy-dx/gophorth/pkg/releaser/releaserdto"
 	"github.com/joy-dx/gophorth/pkg/stringz"
+	"github.com/joy-dx/gophorth/pkg/updater"
 	"github.com/joy-dx/gophorth/pkg/updater/updaterdto"
 )
 
@@ -39,6 +41,7 @@ func (c *FromGithub) GetVersionLink() (releaserdto.ReleaseAsset, error) {
 }
 
 // TODO With both reverse template and asset name guesser, refactor combining both
+// TODO Rethink asset designation strategy to be more efficient
 func (c *FromGithub) CheckUpdate(ctx context.Context, cfg *updaterdto.UpdaterConfig) (releaserdto.ReleaseAsset, error) {
 	asset := releaserdto.ReleaseAsset{}
 
@@ -93,9 +96,7 @@ func (c *FromGithub) CheckUpdate(ctx context.Context, cfg *updaterdto.UpdaterCon
 		if compileTemplateErr != nil {
 			return asset, compileTemplateErr
 		}
-		githubAsset := releaserdto.ReleaseAsset{
-			Version: foundRelease.GetTagName(),
-		}
+		asset.Version = foundRelease.GetTagName()
 		for idx := range foundRelease.Assets {
 			name := foundRelease.Assets[idx].GetName()
 
@@ -118,56 +119,75 @@ func (c *FromGithub) CheckUpdate(ctx context.Context, cfg *updaterdto.UpdaterCon
 				g[n] = matches[i]
 			}
 
-			githubAsset.
-				WithArtefactName(name).
-				WithVariant(strings.TrimLeft(g["variant"], "/-_")).
+			asset.
 				WithArch(g["arch"]).
-				WithPlatform(g["platform"]).
-				WithDownloadURL(foundRelease.Assets[idx].GetBrowserDownloadURL()).
-				WithChecksum(foundRelease.Assets[idx].GetDigest()).
-				WithSize(int64(foundRelease.Assets[idx].GetSize()))
+				WithPlatform(g["platform"])
 
 			// Check if the asset matches our criteria
-			if cfg.Platform != githubAsset.Platform ||
-				cfg.Architecture != githubAsset.Arch ||
-				cfg.Variant != githubAsset.Variant {
+			if cfg.Platform != asset.Platform ||
+				cfg.Architecture != asset.Arch ||
+				cfg.Variant != asset.Variant {
 				continue
 			}
-			c.FoundVersion = &githubAsset
-			return githubAsset, nil
-		}
+			chosenAsset = foundRelease.Assets[idx]
+			variant = strings.TrimLeft(g["variant"], "/-_")
 
+			break
+		}
 	default:
 		// Default: best-effort choose asset based on name patterns + cfg.Platform/Architecture
-		githubAsset, variantFound, selectErr := selectGitHubAssetDefault(*cfg, foundRelease.Assets)
+		githubAsset, variantFound, selectErr := selectGitHubAssetDefault(cfg, foundRelease.Assets)
 		if selectErr != nil {
 			return asset, fmt.Errorf("github asset selection: %w", selectErr)
 		}
 		chosenAsset, variant = githubAsset, variantFound
 	}
 
-	foundPlatform, foundArchitecture := file.AssetNameGuess(chosenAsset.GetName())
-	if foundPlatform == "" || foundArchitecture == "" {
-		return asset, errors.New("no asset found for platform/architecture")
+	if asset.Platform == "" || asset.Arch == "" {
+		foundPlatform, foundArchitecture := file.AssetNameGuess(chosenAsset.GetName())
+		if foundPlatform == "" || foundArchitecture == "" {
+			return asset, errors.New("no asset found for platform/architecture")
+		}
+		if asset.Platform == "" {
+			asset.WithPlatform(foundPlatform)
+		}
+		if asset.Arch == "" {
+			asset.WithArch(foundArchitecture)
+		}
 	}
 
 	asset.WithDownloadURL(chosenAsset.GetBrowserDownloadURL()).
 		WithVariant(variant).
-		WithPlatform(foundPlatform).
-		WithArch(foundArchitecture).
-		WithChecksum(chosenAsset.GetDigest()).
-		WithSize(int64(chosenAsset.GetSize()))
+		WithChecksum(strings.Replace(chosenAsset.GetDigest(), "sha256:", "", 1)).
+		WithSize(int64(chosenAsset.GetSize())).
+		WithVersion(foundRelease.GetTagName())
+
+	if c.cfg.GetSignatureFunc != nil {
+		sig, getSigErr := c.cfg.GetSignatureFunc(ctx, &agentConfig)
+		if getSigErr != nil {
+			cfg.Relay.Warn(updater.RlyUpdaterLog{Msg: fmt.Sprintf("Failed to get signature for %s: %s", chosenAsset.GetBrowserDownloadURL(), getSigErr.Error())})
+		} else {
+			sigInfo, sigInfoErr := cryptography.DetectSignatureInformation([]byte(sig))
+			if sigInfoErr != nil {
+				cfg.Relay.Warn(updater.RlyUpdaterLog{Msg: fmt.Sprintf("problem detecting signature info: %s", sigInfoErr.Error())})
+			} else {
+				asset.WithSignatureType(sigInfo.Format)
+				asset.WithSignature(sig)
+			}
+		}
+	}
+
 	c.FoundVersion = &asset
 
 	return asset, nil
 }
 
-func selectGitHubAssetDefault(cfg updaterdto.UpdaterConfig, assets []*github.ReleaseAsset) (*github.ReleaseAsset, string, error) {
+func selectGitHubAssetDefault(cfg *updaterdto.UpdaterConfig, assets []*github.ReleaseAsset) (*github.ReleaseAsset, string, error) {
 	// Simple heuristic: try to match platform/arch in filename.
 	wantOS := strings.ToLower(cfg.Platform)
 	wantArch := strings.ToLower(cfg.Architecture)
 
-	if wantOS != "" || wantArch != "" {
+	if wantOS == "" || wantArch == "" {
 		return nil, "", errors.New("platform/arch cannot be empty")
 	}
 

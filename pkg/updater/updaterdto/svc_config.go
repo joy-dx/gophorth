@@ -60,8 +60,18 @@ func DefaultUpdaterSvcConfig() UpdaterConfig {
 	}
 }
 
+func (c *UpdaterConfig) WithArch(arch string) *UpdaterConfig {
+	c.Architecture = arch
+	return c
+}
+
 func (c *UpdaterConfig) WithLastUpdateCheck(time *time.Time) *UpdaterConfig {
 	c.LastUpdateCheck = time
+	return c
+}
+
+func (c *UpdaterConfig) WithPlatform(platform string) *UpdaterConfig {
+	c.Platform = platform
 	return c
 }
 

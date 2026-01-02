@@ -1,6 +1,6 @@
 # GoPhorth
 
-An unopinionated Go app update mechanism loaded with all the tooling you need
+An unopinionated Go app update mechanism loaded with all the tooling you need to make self-updating Go apps a breeze. 
 
 * Releaser helps prepare deployment artefacts with checksum and signature generation
 * Updater provides a light to implement but fully customisable and reliable app self-update mechanism
@@ -15,12 +15,14 @@ Depending on your specific needs there are some ready-made demonstration apps in
 
 ```
 cd examples/from-json-url
-# Generate relevant artefacts for demonstration
+# Generate relevant artefacts for demonstration. e.g. version 1 in project root and version 2 in 
+# assets path with checksums, signatures, and release meta data
 make generate
-# Run the app needing update
+
+# Run version 1 of the app and check for update
 ./app-example update
 
-# Run the app again post update
+# After the update, try running update again
 ./app-example update
 ```
 

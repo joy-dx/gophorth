@@ -19,6 +19,7 @@ import (
 	"github.com/joy-dx/gophorth/pkg/relay/relayconfig"
 	"github.com/joy-dx/gophorth/pkg/relay/relaydto"
 	"github.com/joy-dx/gophorth/pkg/releaser/releaserconfig"
+	"github.com/joy-dx/gophorth/pkg/releaser/releaserdto"
 	"github.com/joy-dx/gophorth/pkg/updater/updaterdto"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -35,6 +36,11 @@ var (
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			cmd.SetContext(cancelContext)
 			cfg := config.ProvideConfigSvc()
+			cfg.Logger = loggerconfig.DefaultLoggerConfig()
+			cfg.Updater = updaterdto.DefaultUpdaterSvcConfig()
+			cfg.Net = netconfig.DefaultNetSvcConfig()
+			cfg.Relay = relayconfig.DefaultRelaySvcConfig()
+			cfg.Releaser = releaserdto.DefaultReleaserConfig()
 			if stateErr := cfg.Process(); stateErr != nil {
 				log.Fatal(stateErr)
 			}

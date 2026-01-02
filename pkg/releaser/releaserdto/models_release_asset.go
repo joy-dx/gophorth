@@ -33,6 +33,11 @@ func (l *ReleaseAsset) WithVariant(variant string) *ReleaseAsset {
 	return l
 }
 
+func (l *ReleaseAsset) WithVersion(version string) *ReleaseAsset {
+	l.Version = version
+	return l
+}
+
 func (l *ReleaseAsset) WithDownloadURL(url string) *ReleaseAsset {
 	l.DownloadURL = url
 	return l
