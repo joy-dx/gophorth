@@ -24,13 +24,14 @@ import (
 	"github.com/joy-dx/gophorth/pkg/logger/loggersinks"
 	"github.com/joy-dx/gophorth/pkg/net"
 	"github.com/joy-dx/gophorth/pkg/net/netconfig"
-	"github.com/joy-dx/gophorth/pkg/relay"
-	"github.com/joy-dx/gophorth/pkg/relay/relayconfig"
-	"github.com/joy-dx/gophorth/pkg/relay/relaydto"
 	"github.com/joy-dx/gophorth/pkg/releaser/releaserdto"
 	"github.com/joy-dx/gophorth/pkg/updater"
 	"github.com/joy-dx/gophorth/pkg/updater/updaterclients"
 	"github.com/joy-dx/gophorth/pkg/updater/updaterdto"
+	"github.com/joy-dx/relay"
+	relayCfg "github.com/joy-dx/relay/config"
+	"github.com/joy-dx/relay/dto"
+	"github.com/joy-dx/relay/events"
 	"github.com/spf13/viper"
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
@@ -60,7 +61,7 @@ func main() {
 	cfgSvc.Logger = loggerconfig.DefaultLoggerConfig()
 	cfgSvc.Updater = updaterdto.DefaultUpdaterSvcConfig()
 	cfgSvc.Net = netconfig.DefaultNetSvcConfig()
-	cfgSvc.Relay = relayconfig.DefaultRelaySvcConfig()
+	cfgSvc.Relay = relayCfg.DefaultRelaySvcConfig()
 	cfgSvc.Releaser = releaserdto.DefaultReleaserConfig()
 	if stateErr := cfgSvc.Process(); stateErr != nil {
 		log.Fatal(stateErr)
@@ -69,10 +70,10 @@ func main() {
 
 	// Logger - A simple console relay sink builder
 	if viper.GetBool(string(gophoptions.Quiet)) {
-		cfgSvc.Logger.WithLevel(relaydto.Error)
+		cfgSvc.Logger.WithLevel(dto.Error)
 	}
 	if viper.GetBool(string(gophoptions.Debug)) {
-		cfgSvc.Logger.WithLevel(relaydto.Debug)
+		cfgSvc.Logger.WithLevel(dto.Debug)
 		cfgSvc.Logger.WithType(loggersinks.SimpleLoggerRef)
 	}
 	loggerSvc := logger.ProvideLoggerSvc(&cfgSvc.Logger)
@@ -82,8 +83,7 @@ func main() {
 	consoleSink := loggerSvc.GetLogger()
 
 	// Relay - Internal Channel based event bus
-	relayCfg := relayconfig.DefaultRelaySvcConfig()
-	relaySvc := relay.ProvideRelaySvc(&relayCfg)
+	relaySvc := relay.ProvideRelaySvc(&cfgSvc.Relay)
 	// Register a common screen out sink from the main logger service
 	relaySvc.RegisterSink(consoleSink)
 	for _, relaySink := range relayCfg.Sinks {
@@ -156,7 +156,7 @@ func main() {
 
 	// Update Client
 	logPath, logPathErr := filepath.Abs(workingDir + "/update.log")
-	relaySvc.Debug(relaydto.RlyLog{Msg: fmt.Sprintf("using %s as update log path", logPath)})
+	relaySvc.Debug(events.RlyLog{Msg: fmt.Sprintf("using %s as update log path", logPath)})
 	if logPathErr != nil {
 		log.Fatal(logPathErr)
 	}
@@ -191,12 +191,12 @@ func main() {
 		OnStartup: func(ctx context.Context) {
 			updaterInterface.SetContext(ctx)
 
-			wailsSink := guisinks.NewWailsSink(ctx, &relaydto.RelaySinkConfig{
+			wailsSink := guisinks.NewWailsSink(ctx, &dto.RelaySinkConfig{
 				Level: cfgSvc.Logger.Level,
 				Ref:   "wails",
 			})
 			relaySvc.RegisterSink(wailsSink)
-			relaySvc.Info(relaydto.RlyLog{Msg: fmt.Sprintf("hosting assets from %s/assets", workingDir)})
+			relaySvc.Info(dto.RlyLog{Msg: fmt.Sprintf("hosting assets from %s/assets", workingDir)})
 
 			// Host the updates path so we can reach out to the web
 			go func() {

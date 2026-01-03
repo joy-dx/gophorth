@@ -4,9 +4,9 @@ import (
 	"context"
 
 	"github.com/joy-dx/gophorth/pkg/net/netdto"
-	"github.com/joy-dx/gophorth/pkg/relay/relaydto"
 	"github.com/joy-dx/gophorth/pkg/releaser/releaserdto"
 	"github.com/joy-dx/gophorth/pkg/updater/updaterdto"
+	"github.com/joy-dx/relay/dto"
 )
 
 type NetCheckFunc func(ctx context.Context, config NetAgentCfg) (releaserdto.ReleaseAsset, error)
@@ -31,7 +31,7 @@ func (c *FromNetConfig) WithUserFetchFunction(checkFunc NetCheckFunc) *FromNetCo
 
 type NetAgentCfg struct {
 	NetSvc      netdto.NetInterface
-	Relay       relaydto.RelayInterface
+	Relay       dto.RelayInterface
 	UpdaterCfg  updaterdto.UpdaterConfig
 	VersionLink *releaserdto.ReleaseAsset
 }

@@ -6,15 +6,15 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/joy-dx/gophorth/pkg/relay/relaydto"
 	"github.com/joy-dx/gophorth/pkg/releaser/releaserdto"
 	"github.com/joy-dx/gophorth/pkg/updater/updaterdto"
+	"github.com/joy-dx/relay/dto"
 )
 
 // UpdaterInterface struct
 type UpdaterInterface struct {
 	ctx        context.Context
-	relay      relaydto.RelayInterface
+	relay      dto.RelayInterface
 	updaterSvc updaterdto.UpdaterInterface
 }
 

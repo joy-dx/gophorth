@@ -12,10 +12,10 @@ import (
 	"time"
 
 	"github.com/joy-dx/gophorth/examples/from-github-release/config"
+	"github.com/joy-dx/relay"
 
 	"github.com/google/go-github/v74/github"
 	"github.com/joy-dx/gophorth/pkg/net"
-	"github.com/joy-dx/gophorth/pkg/relay"
 	"github.com/joy-dx/gophorth/pkg/updater"
 	"github.com/joy-dx/gophorth/pkg/updater/updaterclients"
 	"github.com/joy-dx/gophorth/pkg/updater/updaterdto"

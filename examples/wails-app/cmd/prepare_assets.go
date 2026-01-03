@@ -13,12 +13,12 @@ import (
 	"github.com/joy-dx/gophorth/pkg/logger/loggersinks"
 	"github.com/joy-dx/gophorth/pkg/net"
 	"github.com/joy-dx/gophorth/pkg/net/netconfig"
-	"github.com/joy-dx/gophorth/pkg/relay"
-	"github.com/joy-dx/gophorth/pkg/relay/relayconfig"
-	"github.com/joy-dx/gophorth/pkg/relay/relaydto"
 	"github.com/joy-dx/gophorth/pkg/releaser"
 	"github.com/joy-dx/gophorth/pkg/releaser/releaserdto"
 	"github.com/joy-dx/gophorth/pkg/updater/updaterdto"
+	"github.com/joy-dx/relay"
+	relayCfg "github.com/joy-dx/relay/config"
+	"github.com/joy-dx/relay/dto"
 	"github.com/spf13/viper"
 )
 
@@ -31,35 +31,34 @@ func main() {
 	versionWanted := os.Args[1]
 
 	ctx := context.Background()
-	cfgSvc := config.ProvideConfigSvc()
-	cfgSvc.Logger = loggerconfig.DefaultLoggerConfig()
-	cfgSvc.Updater = updaterdto.DefaultUpdaterSvcConfig()
-	cfgSvc.Net = netconfig.DefaultNetSvcConfig()
-	cfgSvc.Relay = relayconfig.DefaultRelaySvcConfig()
-	cfgSvc.Releaser = releaserdto.DefaultReleaserConfig()
-	if stateErr := cfgSvc.Process(); stateErr != nil {
+	cfg := config.ProvideConfigSvc()
+	cfg.Logger = loggerconfig.DefaultLoggerConfig()
+	cfg.Updater = updaterdto.DefaultUpdaterSvcConfig()
+	cfg.Net = netconfig.DefaultNetSvcConfig()
+	cfg.Relay = relayCfg.DefaultRelaySvcConfig()
+	cfg.Releaser = releaserdto.DefaultReleaserConfig()
+	if stateErr := cfg.Process(); stateErr != nil {
 		log.Fatal(stateErr)
 	}
 	// Logger - A simple console relay sink builder
 	if viper.GetBool(string(gophoptions.Quiet)) {
-		cfgSvc.Logger.WithLevel(relaydto.Error)
+		cfg.Logger.WithLevel(dto.Error)
 	}
 	if viper.GetBool(string(gophoptions.Debug)) {
-		cfgSvc.Logger.WithLevel(relaydto.Debug)
-		cfgSvc.Logger.WithType(loggersinks.SimpleLoggerRef)
+		cfg.Logger.WithLevel(dto.Debug)
+		cfg.Logger.WithType(loggersinks.SimpleLoggerRef)
 	}
-	loggerSvc := logger.ProvideLoggerSvc(&cfgSvc.Logger)
+	loggerSvc := logger.ProvideLoggerSvc(&cfg.Logger)
 	if err := loggerSvc.Hydrate(); err != nil {
 		log.Fatal(fmt.Errorf("problem creating logger: %w", err))
 	}
 	consoleSink := loggerSvc.GetLogger()
 
 	// Relay - Internal Channel based event bus
-	relayCfg := relayconfig.DefaultRelaySvcConfig()
-	relaySvc := relay.ProvideRelaySvc(&relayCfg)
+	relaySvc := relay.ProvideRelaySvc(&cfg.Relay)
 	// Register a common screen out sink from the main logger service
 	relaySvc.RegisterSink(consoleSink)
-	for _, relaySink := range relayCfg.Sinks {
+	for _, relaySink := range cfg.Relay.Sinks {
 		relaySvc.RegisterSink(relaySink)
 	}
 	if err := relaySvc.Hydrate(); err != nil {
@@ -67,13 +66,13 @@ func main() {
 	}
 
 	// Net - Network operations service with blacklist / whitelist support
-	cfgSvc.Net.WithRelay(relaySvc)
-	netSvc := net.ProvideNetSvc(&cfgSvc.Net)
+	cfg.Net.WithRelay(relaySvc)
+	netSvc := net.ProvideNetSvc(&cfg.Net)
 	if err := netSvc.Hydrate(ctx); err != nil {
 		log.Fatal(fmt.Errorf("problem creating net service: %w", err))
 	}
 
-	cfgSvc.Releaser.WithRelay(relaySvc).
+	cfg.Releaser.WithRelay(relaySvc).
 		WithNetSvc(netSvc).
 		WithVersion(versionWanted).
 		WithOutputPath("./assets").
@@ -83,7 +82,7 @@ func main() {
 		WithDownloadPrefix("http://localhost:8080/").
 		WithAllowAnyExtension(true)
 
-	releaserSvc := releaser.ProvideReleaserSvc(&cfgSvc.Releaser)
+	releaserSvc := releaser.ProvideReleaserSvc(&cfg.Releaser)
 	if err := releaserSvc.Hydrate(ctx); err != nil {
 		log.Fatal(fmt.Errorf("problem creating releaser: %w", err))
 	}

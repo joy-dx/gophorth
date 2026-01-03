@@ -10,19 +10,16 @@ import (
 	"github.com/joy-dx/gophorth/examples/from-github-release/config"
 	"github.com/joy-dx/gophorth/pkg/config/builder"
 	"github.com/joy-dx/gophorth/pkg/config/options"
-	"github.com/joy-dx/gophorth/pkg/logger"
-	"github.com/joy-dx/gophorth/pkg/logger/loggerconfig"
-	"github.com/joy-dx/gophorth/pkg/logger/loggersinks"
 	"github.com/joy-dx/gophorth/pkg/net"
 	"github.com/joy-dx/gophorth/pkg/net/netconfig"
-	"github.com/joy-dx/gophorth/pkg/relay"
-	"github.com/joy-dx/gophorth/pkg/relay/relayconfig"
-	"github.com/joy-dx/gophorth/pkg/relay/relaydto"
 	"github.com/joy-dx/gophorth/pkg/releaser/releaserconfig"
 	"github.com/joy-dx/gophorth/pkg/releaser/releaserdto"
 	"github.com/joy-dx/gophorth/pkg/updater/updaterdto"
+	"github.com/joy-dx/relay"
+	relayCfg "github.com/joy-dx/relay/config"
+	"github.com/joy-dx/relay/dto"
+	"github.com/joy-dx/relay/sinks"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 //go:embed embedded/*
@@ -36,36 +33,24 @@ var (
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			cmd.SetContext(cancelContext)
 			cfg := config.ProvideConfigSvc()
-			cfg.Logger = loggerconfig.DefaultLoggerConfig()
 			cfg.Updater = updaterdto.DefaultUpdaterSvcConfig()
 			cfg.Net = netconfig.DefaultNetSvcConfig()
-			cfg.Relay = relayconfig.DefaultRelaySvcConfig()
+			cfg.Relay = relayCfg.DefaultRelaySvcConfig()
 			cfg.Releaser = releaserdto.DefaultReleaserConfig()
 			if stateErr := cfg.Process(); stateErr != nil {
 				log.Fatal(stateErr)
 			}
 			cfg.Updater.WithVersion(BuildID)
 
-			// Logger - A simple console relay sink builder
-			if viper.GetBool(string(options.Quiet)) {
-				cfg.Logger.WithLevel(relaydto.Error)
-			}
-			if viper.GetBool(string(options.Debug)) {
-				cfg.Logger.WithLevel(relaydto.Debug)
-				cfg.Logger.WithType(loggersinks.SimpleLoggerRef)
-			}
-			loggerSvc := logger.ProvideLoggerSvc(&cfg.Logger)
-			if err := loggerSvc.Hydrate(); err != nil {
-				log.Fatal(fmt.Errorf("problem creating logger: %w", err))
-			}
-			consoleSink := loggerSvc.GetLogger()
+			consoleCfg := sinks.DefaultSimpleLoggerConfig()
+			consoleCfg.WithLevel(dto.Debug)
+			consoleSink := sinks.NewSimpleLogger(&consoleCfg)
 
 			// Relay - Internal Channel based event bus
-			relayCfg := relayconfig.DefaultRelaySvcConfig()
-			relaySvc := relay.ProvideRelaySvc(&relayCfg)
+			relaySvc := relay.ProvideRelaySvc(&cfg.Relay)
 			// Register a common screen out sink from the main logger service
 			relaySvc.RegisterSink(consoleSink)
-			for _, relaySink := range relayCfg.Sinks {
+			for _, relaySink := range cfg.Relay.Sinks {
 				relaySvc.RegisterSink(relaySink)
 			}
 			if err := relaySvc.Hydrate(); err != nil {
@@ -95,11 +80,7 @@ func init() {
 
 	configBuilder := builder.ConfigBuilder{}
 	configBuilder.SetCommand(rootCmd)
-	configBuilder.AddBoolParam(options.Debug, false, "Whether to show more output in the console")
-	configBuilder.AddBoolParam(options.Quiet, false, "Only show error logs")
-	loggerconfig.CobraAndViper(rootCmd)
 	netconfig.CobraAndViper(rootCmd)
-	relayconfig.CobraAndViper(rootCmd)
 	releaserconfig.CobraAndViper(rootCmd)
 	updaterdto.CobraAndViper(rootCmd)
 

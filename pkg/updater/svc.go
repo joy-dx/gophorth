@@ -16,14 +16,14 @@ import (
 	"github.com/ProtonMail/go-crypto/openpgp"
 	"github.com/joy-dx/gophorth/pkg/cryptography"
 	"github.com/joy-dx/gophorth/pkg/net/netdto"
-	"github.com/joy-dx/gophorth/pkg/relay/relaydto"
 	"github.com/joy-dx/gophorth/pkg/releaser/releaserdto"
 	"github.com/joy-dx/gophorth/pkg/updater/updatercopier"
 	"github.com/joy-dx/gophorth/pkg/updater/updaterdto"
+	"github.com/joy-dx/relay/dto"
 )
 
 type UpdaterSvc struct {
-	relay  relaydto.RelayInterface
+	relay  dto.RelayInterface
 	netSvc netdto.NetInterface
 	cfg    *updaterdto.UpdaterConfig
 	status updaterdto.UpdateStatus

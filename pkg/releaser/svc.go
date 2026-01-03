@@ -13,12 +13,12 @@ import (
 	"github.com/ProtonMail/go-crypto/openpgp"
 	"github.com/joy-dx/gophorth/pkg/cryptography"
 	"github.com/joy-dx/gophorth/pkg/file"
-	"github.com/joy-dx/gophorth/pkg/relay/relaydto"
 	"github.com/joy-dx/gophorth/pkg/releaser/releaserdto"
+	"github.com/joy-dx/relay/dto"
 )
 
 type ReleaserSvc struct {
-	relay               relaydto.RelayInterface
+	relay               dto.RelayInterface
 	cfg                 *releaserdto.ReleaserConfig
 	changelog           string
 	checksumBuilder     strings.Builder

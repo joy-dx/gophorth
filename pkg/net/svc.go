@@ -6,13 +6,13 @@ import (
 	"github.com/joy-dx/gophorth/pkg/maps"
 	"github.com/joy-dx/gophorth/pkg/net/netconfig"
 	"github.com/joy-dx/gophorth/pkg/net/netdto"
-	"github.com/joy-dx/gophorth/pkg/relay/relaydto"
+	"github.com/joy-dx/relay/dto"
 )
 
 // NetSvc Wrapper for imroc/req to normalize usage and shorten implementation
 type NetSvc struct {
 	cfg            *netconfig.NetSvcConfig
-	relay          relaydto.RelayInterface
+	relay          dto.RelayInterface
 	clients        map[string]netdto.NetClientInterface
 	transferState  maps.Lockable[string, netdto.TransferNotification]
 	muListeners    sync.Mutex

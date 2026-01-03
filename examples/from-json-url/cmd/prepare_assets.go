@@ -8,8 +8,8 @@ import (
 	"github.com/joy-dx/gophorth/pkg/config/builder"
 	"github.com/joy-dx/gophorth/pkg/config/options"
 	"github.com/joy-dx/gophorth/pkg/net"
-	"github.com/joy-dx/gophorth/pkg/relay"
 	"github.com/joy-dx/gophorth/pkg/releaser"
+	"github.com/joy-dx/relay"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )

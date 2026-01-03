@@ -3,12 +3,12 @@ package releaser
 import (
 	"log/slog"
 
-	"github.com/joy-dx/gophorth/pkg/relay/relaydto"
+	"github.com/joy-dx/relay/dto"
 )
 
-const RELAY_RELEASE_CHANNEL relaydto.EventChannel = "releaser"
+const RELAY_RELEASE_CHANNEL dto.EventChannel = "releaser"
 
-const RELAY_RELEASE_LOG relaydto.EventRef = "release.log"
+const RELAY_RELEASE_LOG dto.EventRef = "release.log"
 
 type RlyReleaserLog struct {
 	Msg string `json:"msg"`
@@ -24,10 +24,10 @@ func (e RlyReleaserLog) Message() string {
 	return e.Msg
 }
 
-func (e RlyReleaserLog) RelayChannel() relaydto.EventChannel {
+func (e RlyReleaserLog) RelayChannel() dto.EventChannel {
 	return RELAY_RELEASE_CHANNEL
 }
 
-func (e RlyReleaserLog) RelayType() relaydto.EventRef {
+func (e RlyReleaserLog) RelayType() dto.EventRef {
 	return RELAY_RELEASE_LOG
 }

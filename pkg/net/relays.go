@@ -4,12 +4,12 @@ import (
 	"log/slog"
 
 	"github.com/joy-dx/gophorth/pkg/net/netdto"
-	"github.com/joy-dx/gophorth/pkg/relay/relaydto"
+	"github.com/joy-dx/relay/dto"
 )
 
-const RELAY_NET_CHANNEL relaydto.EventChannel = "net"
+const RELAY_NET_CHANNEL dto.EventChannel = "net"
 
-const RELAY_NET_DOWNLOAD relaydto.EventRef = "net.download"
+const RELAY_NET_DOWNLOAD dto.EventRef = "net.download"
 
 type RlyNetDownload struct {
 	Source      string                `json:"source" yaml:"source"`
@@ -44,15 +44,15 @@ func (e RlyNetDownload) Message() string {
 	return e.Msg
 }
 
-func (e RlyNetDownload) RelayChannel() relaydto.EventChannel {
+func (e RlyNetDownload) RelayChannel() dto.EventChannel {
 	return RELAY_NET_CHANNEL
 }
 
-func (e RlyNetDownload) RelayType() relaydto.EventRef {
+func (e RlyNetDownload) RelayType() dto.EventRef {
 	return RELAY_NET_DOWNLOAD
 }
 
-const RELAY_NET_LOG relaydto.EventRef = "net.log"
+const RELAY_NET_LOG dto.EventRef = "net.log"
 
 type RlyNetLog struct {
 	Msg string `json:"msg"`
@@ -68,10 +68,10 @@ func (e RlyNetLog) Message() string {
 	return e.Msg
 }
 
-func (e RlyNetLog) RelayChannel() relaydto.EventChannel {
+func (e RlyNetLog) RelayChannel() dto.EventChannel {
 	return RELAY_NET_CHANNEL
 }
 
-func (e RlyNetLog) RelayType() relaydto.EventRef {
+func (e RlyNetLog) RelayType() dto.EventRef {
 	return RELAY_NET_LOG
 }

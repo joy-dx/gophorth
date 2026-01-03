@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/joy-dx/gophorth/pkg/net/netdto"
-	"github.com/joy-dx/gophorth/pkg/relay/relaydto"
+	"github.com/joy-dx/relay/dto"
 )
 
 type UpdateFuncType func(ctx context.Context, cfg *UpdaterAgentCfg) (string, error)
@@ -15,7 +15,7 @@ type PrepareFuncType func(ctx context.Context, cfg *UpdaterAgentCfg) error
 // UpdaterConfig Service configuration struct
 type UpdaterConfig struct {
 	NetSvc netdto.NetInterface
-	Relay  relaydto.RelayInterface
+	Relay  dto.RelayInterface
 	// AllowDowngrade allows downgrading to older versions.
 	AllowDowngrade bool
 	// AllowPrerelease allows updating to pre-release versions.
@@ -140,7 +140,7 @@ func (c *UpdaterConfig) WithNetSvc(svc netdto.NetInterface) *UpdaterConfig {
 	return c
 }
 
-func (c *UpdaterConfig) WithRelay(relay relaydto.RelayInterface) *UpdaterConfig {
+func (c *UpdaterConfig) WithRelay(relay dto.RelayInterface) *UpdaterConfig {
 	c.Relay = relay
 	return c
 }

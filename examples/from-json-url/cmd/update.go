@@ -16,11 +16,11 @@ import (
 	"github.com/joy-dx/gophorth/examples/from-json-url/config"
 	"github.com/joy-dx/gophorth/examples/utils"
 	"github.com/joy-dx/gophorth/pkg/net"
-	"github.com/joy-dx/gophorth/pkg/relay"
 	"github.com/joy-dx/gophorth/pkg/releaser/releaserdto"
 	"github.com/joy-dx/gophorth/pkg/updater"
 	"github.com/joy-dx/gophorth/pkg/updater/updaterclients"
 	"github.com/joy-dx/gophorth/pkg/updater/updaterdto"
+	"github.com/joy-dx/relay"
 	"github.com/spf13/cobra"
 )
 

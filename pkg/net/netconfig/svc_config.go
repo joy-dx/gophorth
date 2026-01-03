@@ -4,11 +4,11 @@ import (
 	"time"
 
 	"github.com/joy-dx/gophorth/pkg/net/netdto"
-	"github.com/joy-dx/gophorth/pkg/relay/relaydto"
+	"github.com/joy-dx/relay/dto"
 )
 
 type NetSvcConfig struct {
-	relay                    relaydto.RelayInterface
+	relay                    dto.RelayInterface
 	ExtraHeaders             netdto.ExtraHeaders `json:"extra_headers,omitempty" yaml:"extra_headers,omitempty" mapstructure:"extra_headers"`
 	RequestTimeout           time.Duration       `json:"request_timeout,omitempty" yaml:"request_timeout,omitempty" mapstructure:"request_timeout"`
 	UserAgent                string              `json:"user_agent,omitempty" yaml:"user_agent,omitempty" mapstructure:"user_agent"`
@@ -67,10 +67,10 @@ func (c *NetSvcConfig) WithPreferCurl(preference bool) *NetSvcConfig {
 	return c
 }
 
-func (c *NetSvcConfig) WithRelay(relay relaydto.RelayInterface) *NetSvcConfig {
+func (c *NetSvcConfig) WithRelay(relay dto.RelayInterface) *NetSvcConfig {
 	c.relay = relay
 	return c
 }
-func (c *NetSvcConfig) Relay() relaydto.RelayInterface {
+func (c *NetSvcConfig) Relay() dto.RelayInterface {
 	return c.relay
 }
