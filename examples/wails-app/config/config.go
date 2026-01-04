@@ -7,7 +7,6 @@ import (
 
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/joy-dx/gophorth/pkg/file"
-	"github.com/joy-dx/gophorth/pkg/logger/loggerconfig"
 	"github.com/joy-dx/gophorth/pkg/net/netconfig"
 	"github.com/joy-dx/gophorth/pkg/releaser/releaserdto"
 	"github.com/joy-dx/gophorth/pkg/updater/updaterdto"
@@ -19,7 +18,6 @@ import (
 type ConfigSvc struct {
 	cfgFilePath          string
 	cfgEnvironmentPrefix string
-	Logger               loggerconfig.LoggerConfig  `json:"logger" yaml:"logger" mapstructure:"logger"`
 	Net                  netconfig.NetSvcConfig     `json:"net" yaml:"net" mapstructure:"net"`
 	Relay                config.RelaySvcConfig      `json:"relay" yaml:"relay" mapstructure:"relay"`
 	Releaser             releaserdto.ReleaserConfig `json:"releaser" yaml:"releaser" mapstructure:"releaser"`

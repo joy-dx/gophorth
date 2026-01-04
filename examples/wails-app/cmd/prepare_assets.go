@@ -7,10 +7,6 @@ import (
 	"os"
 	"wails-app/config"
 
-	gophoptions "github.com/joy-dx/gophorth/pkg/config/options"
-	"github.com/joy-dx/gophorth/pkg/logger"
-	"github.com/joy-dx/gophorth/pkg/logger/loggerconfig"
-	"github.com/joy-dx/gophorth/pkg/logger/loggersinks"
 	"github.com/joy-dx/gophorth/pkg/net"
 	"github.com/joy-dx/gophorth/pkg/net/netconfig"
 	"github.com/joy-dx/gophorth/pkg/releaser"
@@ -19,7 +15,7 @@ import (
 	"github.com/joy-dx/relay"
 	relayCfg "github.com/joy-dx/relay/config"
 	"github.com/joy-dx/relay/dto"
-	"github.com/spf13/viper"
+	"github.com/joy-dx/relay/sinks"
 )
 
 func main() {
@@ -32,7 +28,6 @@ func main() {
 
 	ctx := context.Background()
 	cfg := config.ProvideConfigSvc()
-	cfg.Logger = loggerconfig.DefaultLoggerConfig()
 	cfg.Updater = updaterdto.DefaultUpdaterSvcConfig()
 	cfg.Net = netconfig.DefaultNetSvcConfig()
 	cfg.Relay = relayCfg.DefaultRelaySvcConfig()
@@ -40,19 +35,10 @@ func main() {
 	if stateErr := cfg.Process(); stateErr != nil {
 		log.Fatal(stateErr)
 	}
-	// Logger - A simple console relay sink builder
-	if viper.GetBool(string(gophoptions.Quiet)) {
-		cfg.Logger.WithLevel(dto.Error)
-	}
-	if viper.GetBool(string(gophoptions.Debug)) {
-		cfg.Logger.WithLevel(dto.Debug)
-		cfg.Logger.WithType(loggersinks.SimpleLoggerRef)
-	}
-	loggerSvc := logger.ProvideLoggerSvc(&cfg.Logger)
-	if err := loggerSvc.Hydrate(); err != nil {
-		log.Fatal(fmt.Errorf("problem creating logger: %w", err))
-	}
-	consoleSink := loggerSvc.GetLogger()
+
+	consoleCfg := sinks.DefaultSimpleLoggerConfig()
+	consoleCfg.WithLevel(dto.Debug)
+	consoleSink := sinks.NewSimpleLogger(&consoleCfg)
 
 	// Relay - Internal Channel based event bus
 	relaySvc := relay.ProvideRelaySvc(&cfg.Relay)

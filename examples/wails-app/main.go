@@ -18,10 +18,6 @@ import (
 	"github.com/Masterminds/semver/v3"
 	"github.com/joy-dx/gophorth/examples/utils"
 	"github.com/joy-dx/gophorth/pkg/archive"
-	gophoptions "github.com/joy-dx/gophorth/pkg/config/options"
-	"github.com/joy-dx/gophorth/pkg/logger"
-	"github.com/joy-dx/gophorth/pkg/logger/loggerconfig"
-	"github.com/joy-dx/gophorth/pkg/logger/loggersinks"
 	"github.com/joy-dx/gophorth/pkg/net"
 	"github.com/joy-dx/gophorth/pkg/net/netconfig"
 	"github.com/joy-dx/gophorth/pkg/releaser/releaserdto"
@@ -32,7 +28,7 @@ import (
 	relayCfg "github.com/joy-dx/relay/config"
 	"github.com/joy-dx/relay/dto"
 	"github.com/joy-dx/relay/events"
-	"github.com/spf13/viper"
+	"github.com/joy-dx/relay/sinks"
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
@@ -57,36 +53,25 @@ func main() {
 
 	// Serve the assets path update checking
 
-	cfgSvc := config.ProvideConfigSvc()
-	cfgSvc.Logger = loggerconfig.DefaultLoggerConfig()
-	cfgSvc.Updater = updaterdto.DefaultUpdaterSvcConfig()
-	cfgSvc.Net = netconfig.DefaultNetSvcConfig()
-	cfgSvc.Relay = relayCfg.DefaultRelaySvcConfig()
-	cfgSvc.Releaser = releaserdto.DefaultReleaserConfig()
-	if stateErr := cfgSvc.Process(); stateErr != nil {
+	cfg := config.ProvideConfigSvc()
+	cfg.Updater = updaterdto.DefaultUpdaterSvcConfig()
+	cfg.Net = netconfig.DefaultNetSvcConfig()
+	cfg.Relay = relayCfg.DefaultRelaySvcConfig()
+	cfg.Releaser = releaserdto.DefaultReleaserConfig()
+	if stateErr := cfg.Process(); stateErr != nil {
 		log.Fatal(stateErr)
 	}
-	cfgSvc.Updater.WithVersion(BuildID)
+	cfg.Updater.WithVersion(BuildID)
 
-	// Logger - A simple console relay sink builder
-	if viper.GetBool(string(gophoptions.Quiet)) {
-		cfgSvc.Logger.WithLevel(dto.Error)
-	}
-	if viper.GetBool(string(gophoptions.Debug)) {
-		cfgSvc.Logger.WithLevel(dto.Debug)
-		cfgSvc.Logger.WithType(loggersinks.SimpleLoggerRef)
-	}
-	loggerSvc := logger.ProvideLoggerSvc(&cfgSvc.Logger)
-	if err := loggerSvc.Hydrate(); err != nil {
-		log.Fatal(fmt.Errorf("problem creating logger: %w", err))
-	}
-	consoleSink := loggerSvc.GetLogger()
+	consoleCfg := sinks.DefaultSimpleLoggerConfig()
+	consoleCfg.WithLevel(dto.Debug)
+	consoleSink := sinks.NewSimpleLogger(&consoleCfg)
 
 	// Relay - Internal Channel based event bus
-	relaySvc := relay.ProvideRelaySvc(&cfgSvc.Relay)
+	relaySvc := relay.ProvideRelaySvc(&cfg.Relay)
 	// Register a common screen out sink from the main logger service
 	relaySvc.RegisterSink(consoleSink)
-	for _, relaySink := range relayCfg.Sinks {
+	for _, relaySink := range cfg.Relay.Sinks {
 		relaySvc.RegisterSink(relaySink)
 	}
 	if err := relaySvc.Hydrate(); err != nil {
@@ -94,8 +79,8 @@ func main() {
 	}
 
 	// Net - Network operations service with blacklist / whitelist support
-	cfgSvc.Net.WithRelay(relaySvc)
-	netSvc := net.ProvideNetSvc(&cfgSvc.Net)
+	cfg.Net.WithRelay(relaySvc)
+	netSvc := net.ProvideNetSvc(&cfg.Net)
 	if err := netSvc.Hydrate(ctx); err != nil {
 		log.Fatal(fmt.Errorf("problem creating net service: %w", err))
 	}
@@ -160,7 +145,7 @@ func main() {
 	if logPathErr != nil {
 		log.Fatal(logPathErr)
 	}
-	cfgSvc.Updater.WithRelay(relaySvc).
+	cfg.Updater.WithRelay(relaySvc).
 		WithNetSvc(netSvc).
 		WithCheckClient(netClient).
 		WithTemporaryPath("/tmp/update-test").
@@ -170,7 +155,7 @@ func main() {
 		WithPrepareFunc(prepareFunc).
 		WithVariant(Variant)
 
-	updaterSvc := updater.ProvideUpdaterSvc(&cfgSvc.Updater)
+	updaterSvc := updater.ProvideUpdaterSvc(&cfg.Updater)
 	if err := updaterSvc.Hydrate(ctx); err != nil {
 		log.Fatal(fmt.Errorf("problem creating updater service: %w", err))
 	}
@@ -192,11 +177,11 @@ func main() {
 			updaterInterface.SetContext(ctx)
 
 			wailsSink := guisinks.NewWailsSink(ctx, &dto.RelaySinkConfig{
-				Level: cfgSvc.Logger.Level,
+				Level: dto.Debug,
 				Ref:   "wails",
 			})
 			relaySvc.RegisterSink(wailsSink)
-			relaySvc.Info(dto.RlyLog{Msg: fmt.Sprintf("hosting assets from %s/assets", workingDir)})
+			relaySvc.Info(events.RlyLog{Msg: fmt.Sprintf("hosting assets from %s/assets", workingDir)})
 
 			// Host the updates path so we can reach out to the web
 			go func() {

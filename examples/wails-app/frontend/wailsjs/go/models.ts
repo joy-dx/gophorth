@@ -1,5 +1,11 @@
 export namespace main {
 	
+	export enum Channel {
+	    RELAY_NET = "net",
+	    RELAY_BASE = "relay",
+	    RELAY_RELEASER = "releaser",
+	    RELAY_UPDATER = "updater",
+	}
 	export enum Relay {
 	    NET_DOWNLOAD = "net.download",
 	    NET_LOG = "net.log",
@@ -7,12 +13,6 @@ export namespace main {
 	    RELEASE_LOG = "release.log",
 	    UPDATER_LOG = "updater.log",
 	    UPDATER_NEW_VERSION = "updater.new_version",
-	}
-	export enum Channel {
-	    RELAY_NET = "net",
-	    RELAY_BASE = "relay",
-	    RELAY_RELEASER = "releaser",
-	    RELAY_UPDATER = "updater",
 	}
 
 }
