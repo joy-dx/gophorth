@@ -66,6 +66,8 @@ github.com/google/go-querystring v1.2.0 h1:yhqkPbu2/OH+V9BfpCVPZkNmUXhb2gBxJArfh
 github.com/google/go-querystring v1.2.0/go.mod h1:8IFJqpSRITyJ8QhQ13bmbeMBDfmeEJZD5A0egEOmkqU=
 github.com/inconshreveable/mousetrap v1.1.0 h1:wN+x4NVGpMsO7ErUn/mUI3vEoE6Jt13X2s0bqwp9tc8=
 github.com/inconshreveable/mousetrap v1.1.0/go.mod h1:vpF70FUmC8bwa3OWnCshd2FqLfsEA9PFc4w1p2J65bw=
+github.com/joy-dx/lockablemap v1.0.1 h1:+XmQJ4pKRcnkoorfjbKtPScrrUqrDwj7La+WXhptmuc=
+github.com/joy-dx/lockablemap v1.0.1/go.mod h1:fUbvsgi9SRM88P8KocoZug3Og7x/4zVdmh87lvPNJGc=
 github.com/joy-dx/relay v1.1.0 h1:Kh49lcVExTwb4hbT/zIxc4B6L0bYz92n9o9iWrYTbtk=
 github.com/joy-dx/relay v1.1.0/go.mod h1:8UyeABeVG65FqcqHPNXmt4PnF2/yc0kOxNsA8F2Zve0=
 github.com/klauspost/compress v1.18.2 h1:iiPHWW0YrcFgpBYhsA6D1+fqHssJscY/Tm/y2Uqnapk=

@@ -3,9 +3,9 @@ package net
 import (
 	"sync"
 
-	"github.com/joy-dx/gophorth/pkg/maps"
 	"github.com/joy-dx/gophorth/pkg/net/netconfig"
 	"github.com/joy-dx/gophorth/pkg/net/netdto"
+	"github.com/joy-dx/lockablemap"
 	"github.com/joy-dx/relay/dto"
 )
 
@@ -14,7 +14,7 @@ type NetSvc struct {
 	cfg            *netconfig.NetSvcConfig
 	relay          dto.RelayInterface
 	clients        map[string]netdto.NetClientInterface
-	transferState  maps.Lockable[string, netdto.TransferNotification]
+	transferState  lockablemap.LockableMap[string, netdto.TransferNotification]
 	muListeners    sync.Mutex
 	listenersByURL map[string][]chan netdto.TransferNotification
 }
