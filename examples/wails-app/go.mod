@@ -5,7 +5,8 @@ go 1.25.5
 require (
 	github.com/Masterminds/semver/v3 v3.4.0
 	github.com/go-viper/mapstructure/v2 v2.4.0
-	github.com/joy-dx/gophorth v0.2.0
+	github.com/joy-dx/gonetic v1.0.3
+	github.com/joy-dx/gophorth v0.4.0
 	github.com/joy-dx/relay v1.1.0
 	github.com/spf13/viper v1.21.0
 	github.com/wailsapp/wails/v2 v2.11.0
@@ -27,6 +28,7 @@ require (
 	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jchv/go-winloader v0.0.0-20250406163304-c1995be93bd1 // indirect
+	github.com/joy-dx/lockablemap v1.0.1 // indirect
 	github.com/klauspost/compress v1.18.2 // indirect
 	github.com/labstack/echo/v4 v4.15.0 // indirect
 	github.com/labstack/gommon v0.4.2 // indirect

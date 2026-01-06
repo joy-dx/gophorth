@@ -40,8 +40,12 @@ github.com/inconshreveable/mousetrap v1.1.0 h1:wN+x4NVGpMsO7ErUn/mUI3vEoE6Jt13X2
 github.com/inconshreveable/mousetrap v1.1.0/go.mod h1:vpF70FUmC8bwa3OWnCshd2FqLfsEA9PFc4w1p2J65bw=
 github.com/jchv/go-winloader v0.0.0-20250406163304-c1995be93bd1 h1:njuLRcjAuMKr7kI3D85AXWkw6/+v9PwtV6M6o11sWHQ=
 github.com/jchv/go-winloader v0.0.0-20250406163304-c1995be93bd1/go.mod h1:alcuEEnZsY1WQsagKhZDsoPCRoOijYqhZvPwLG0kzVs=
-github.com/joy-dx/gophorth v0.2.0 h1:IVNJTx9Nuq9o50sltwXQcG6LQIVFdjUrtmx+GhFql7g=
-github.com/joy-dx/gophorth v0.2.0/go.mod h1:gjmb8gWlbsuoxvQlTgx0gl+stZ3OlHTKsXwqgLvsVc8=
+github.com/joy-dx/gonetic v1.0.3 h1:bWOAuvO6gWL+0Npe4Oijmgeqqt7ihQWV4M/TJuOYM4A=
+github.com/joy-dx/gonetic v1.0.3/go.mod h1:7/exYNd0dEdNeVmeAWy+rm2cYDmorYYlhH+zBz+zcHM=
+github.com/joy-dx/gophorth v0.4.0 h1:e/TSRTcY8WBjY0TZEDvfr/8wv3J7PjPUHVeYbkouPUQ=
+github.com/joy-dx/gophorth v0.4.0/go.mod h1:1En/8fStDryy5W7DsPjMTNppLxFF5uBtLcHlxDfZwD0=
+github.com/joy-dx/lockablemap v1.0.1 h1:+XmQJ4pKRcnkoorfjbKtPScrrUqrDwj7La+WXhptmuc=
+github.com/joy-dx/lockablemap v1.0.1/go.mod h1:fUbvsgi9SRM88P8KocoZug3Og7x/4zVdmh87lvPNJGc=
 github.com/joy-dx/relay v1.1.0 h1:Kh49lcVExTwb4hbT/zIxc4B6L0bYz92n9o9iWrYTbtk=
 github.com/joy-dx/relay v1.1.0/go.mod h1:8UyeABeVG65FqcqHPNXmt4PnF2/yc0kOxNsA8F2Zve0=
 github.com/klauspost/compress v1.18.2 h1:iiPHWW0YrcFgpBYhsA6D1+fqHssJscY/Tm/y2Uqnapk=

@@ -36,7 +36,7 @@ GoPhorth comes with a Releaser service to help prepare meta information about yo
 // Internal messaging system to extend log capabilities
 relaySvc := relay.ProvideRelaySvc(nil)
 // Network services facade
-netSvc := net.ProvideNetSvc(nil)
+netSvc := gonetic.ProvideNetSvc(nil)
 
 releaserCfg := releaserdto.DefaultReleaserConfig()
 releaserCfg.WithRelay(relaySvc).

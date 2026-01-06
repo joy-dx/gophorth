@@ -16,10 +16,10 @@ import (
 	"wails-app/guisinks"
 
 	"github.com/Masterminds/semver/v3"
+	"github.com/joy-dx/gonetic"
+	netCfg "github.com/joy-dx/gonetic/config"
 	"github.com/joy-dx/gophorth/examples/utils"
 	"github.com/joy-dx/gophorth/pkg/archive"
-	"github.com/joy-dx/gophorth/pkg/net"
-	"github.com/joy-dx/gophorth/pkg/net/netconfig"
 	"github.com/joy-dx/gophorth/pkg/releaser/releaserdto"
 	"github.com/joy-dx/gophorth/pkg/updater"
 	"github.com/joy-dx/gophorth/pkg/updater/updaterclients"
@@ -55,7 +55,7 @@ func main() {
 
 	cfg := config.ProvideConfigSvc()
 	cfg.Updater = updaterdto.DefaultUpdaterSvcConfig()
-	cfg.Net = netconfig.DefaultNetSvcConfig()
+	cfg.Net = netCfg.DefaultNetSvcConfig()
 	cfg.Relay = relayCfg.DefaultRelaySvcConfig()
 	cfg.Releaser = releaserdto.DefaultReleaserConfig()
 	if stateErr := cfg.Process(); stateErr != nil {
@@ -80,7 +80,7 @@ func main() {
 
 	// Net - Network operations service with blacklist / whitelist support
 	cfg.Net.WithRelay(relaySvc)
-	netSvc := net.ProvideNetSvc(&cfg.Net)
+	netSvc := gonetic.ProvideNetSvc(&cfg.Net)
 	if err := netSvc.Hydrate(ctx); err != nil {
 		log.Fatal(fmt.Errorf("problem creating net service: %w", err))
 	}
