@@ -7,11 +7,11 @@ import (
 	"log"
 	"os"
 
+	"github.com/joy-dx/gonetic"
 	"github.com/joy-dx/gophorth/examples/from-json-url/config"
+	"github.com/joy-dx/gophorth/examples/from-json-url/config/cliflags"
 	"github.com/joy-dx/gophorth/pkg/config/builder"
 	"github.com/joy-dx/gophorth/pkg/config/options"
-	"github.com/joy-dx/gophorth/pkg/net"
-	"github.com/joy-dx/gophorth/pkg/net/netconfig"
 	"github.com/joy-dx/gophorth/pkg/releaser/releaserconfig"
 	"github.com/joy-dx/gophorth/pkg/updater/updaterdto"
 	"github.com/joy-dx/relay"
@@ -55,7 +55,7 @@ var (
 
 			// Net - Network operations service with blacklist / whitelist support
 			cfg.Net.WithRelay(relaySvc)
-			netService := net.ProvideNetSvc(&cfg.Net)
+			netService := gonetic.ProvideNetSvc(&cfg.Net)
 			if err := netService.Hydrate(cancelContext); err != nil {
 				log.Fatal(fmt.Errorf("problem creating net service: %w", err))
 			}
@@ -76,7 +76,7 @@ func init() {
 
 	configBuilder := builder.ConfigBuilder{}
 	configBuilder.SetCommand(rootCmd)
-	netconfig.CobraAndViper(rootCmd)
+	cliflags.NetCobraAndViper(rootCmd)
 	releaserconfig.CobraAndViper(rootCmd)
 	updaterdto.CobraAndViper(rootCmd)
 

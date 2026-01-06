@@ -14,8 +14,8 @@ import (
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/ProtonMail/go-crypto/openpgp"
+	netDTO "github.com/joy-dx/gonetic/dto"
 	"github.com/joy-dx/gophorth/pkg/cryptography"
-	"github.com/joy-dx/gophorth/pkg/net/netdto"
 	"github.com/joy-dx/gophorth/pkg/releaser/releaserdto"
 	"github.com/joy-dx/gophorth/pkg/updater/updatercopier"
 	"github.com/joy-dx/gophorth/pkg/updater/updaterdto"
@@ -24,7 +24,7 @@ import (
 
 type UpdaterSvc struct {
 	relay  dto.RelayInterface
-	netSvc netdto.NetInterface
+	netSvc netDTO.NetInterface
 	cfg    *updaterdto.UpdaterConfig
 	status updaterdto.UpdateStatus
 	// State information to be populated about possible update
@@ -86,10 +86,12 @@ func (s *UpdaterSvc) DownloadUpdate(ctx context.Context, link *releaserdto.Relea
 		if s.contextUpdate.DownloadURL == "" {
 			return errors.New("no download url configured")
 		}
-		downloadCfg := netdto.DefaultDownloadFileConfig()
-		downloadCfg.WithURL(s.contextUpdate.DownloadURL).
-			WithChecksum(s.contextUpdate.Checksum).
-			WithDestinationFolder(s.cfg.TemporaryPath)
+		downloadCfg := netDTO.DownloadFileConfig{
+			Blocking:          true,
+			Checksum:          s.contextUpdate.Checksum,
+			URL:               s.contextUpdate.DownloadURL,
+			DestinationFolder: s.cfg.TemporaryPath,
+		}
 		downloadPath, downloadErr := s.netSvc.DownloadFile(ctx, &downloadCfg)
 		if downloadErr != nil {
 			return downloadErr

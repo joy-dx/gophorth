@@ -6,8 +6,8 @@ import (
 	"strings"
 
 	"github.com/go-viper/mapstructure/v2"
+	netConfig "github.com/joy-dx/gonetic/config"
 	"github.com/joy-dx/gophorth/pkg/file"
-	"github.com/joy-dx/gophorth/pkg/net/netconfig"
 	"github.com/joy-dx/gophorth/pkg/releaser/releaserdto"
 	"github.com/joy-dx/gophorth/pkg/updater/updaterdto"
 	"github.com/joy-dx/relay/config"
@@ -18,7 +18,7 @@ import (
 type ConfigSvc struct {
 	cfgFilePath          string
 	cfgEnvironmentPrefix string
-	Net                  netconfig.NetSvcConfig     `json:"net" yaml:"net" mapstructure:"net"`
+	Net                  netConfig.NetSvcConfig     `json:"net" yaml:"net" mapstructure:"net"`
 	Relay                config.RelaySvcConfig      `json:"relay" yaml:"relay" mapstructure:"relay"`
 	Releaser             releaserdto.ReleaserConfig `json:"releaser" yaml:"releaser" mapstructure:"releaser"`
 	Updater              updaterdto.UpdaterConfig   `json:"updater" yaml:"updater" mapstructure:"updater"`

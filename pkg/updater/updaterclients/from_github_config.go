@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/google/go-github/v74/github"
-	"github.com/joy-dx/gophorth/pkg/net/netdto"
+	netDTO "github.com/joy-dx/gonetic/dto"
 	"github.com/joy-dx/gophorth/pkg/releaser/releaserdto"
 	"github.com/joy-dx/gophorth/pkg/updater/updaterdto"
 )
@@ -72,7 +72,7 @@ func (c *FromGithubConfig) WithGetSignatureFunc(userFunc GetSignatureFuncType) *
 }
 
 type GithubAgentCfg struct {
-	NetSvc        netdto.NetInterface
+	NetSvc        netDTO.NetInterface
 	UpdaterCfg    updaterdto.UpdaterConfig
 	GithubRelease *github.RepositoryRelease
 	VersionLink   *releaserdto.ReleaseAsset

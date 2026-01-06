@@ -3,7 +3,7 @@ package releaserdto
 import (
 	"context"
 
-	"github.com/joy-dx/gophorth/pkg/net/netdto"
+	netDTO "github.com/joy-dx/gonetic/dto"
 	"github.com/joy-dx/relay/dto"
 )
 
@@ -11,7 +11,7 @@ type ProcessReleasesFuncType func(ctx context.Context, config AgentCfg) error
 
 // ReleaserConfig Service configuration struct
 type ReleaserConfig struct {
-	NetSvc         netdto.NetInterface
+	NetSvc         netDTO.NetInterface
 	Relay          dto.RelayInterface
 	DownloadPrefix string `json:"download_prefix" yaml:"download_prefix"`
 	// OutputPath FS Path where generated artefacts will be saved
@@ -118,7 +118,7 @@ func (c *ReleaserConfig) WithVersion(version string) *ReleaserConfig {
 	return c
 }
 
-func (c *ReleaserConfig) WithNetSvc(svc netdto.NetInterface) *ReleaserConfig {
+func (c *ReleaserConfig) WithNetSvc(svc netDTO.NetInterface) *ReleaserConfig {
 	c.NetSvc = svc
 	return c
 }

@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/joy-dx/gonetic"
 	"github.com/joy-dx/gophorth/examples/from-json-url/config"
 	"github.com/joy-dx/gophorth/pkg/config/builder"
 	"github.com/joy-dx/gophorth/pkg/config/options"
-	"github.com/joy-dx/gophorth/pkg/net"
 	"github.com/joy-dx/gophorth/pkg/releaser"
 	"github.com/joy-dx/relay"
 	"github.com/spf13/cobra"
@@ -21,7 +21,7 @@ var (
 			ctx := cmd.Context()
 			cfgSvc := config.ProvideConfigSvc()
 			relaySvc := relay.ProvideRelaySvc(nil)
-			netSvc := net.ProvideNetSvc(nil)
+			netSvc := gonetic.ProvideNetSvc(nil)
 
 			versionWanted := viper.GetString(string(options.ReleaserVersion))
 

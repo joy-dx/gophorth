@@ -13,9 +13,9 @@ import (
 	"time"
 
 	"github.com/Masterminds/semver/v3"
+	"github.com/joy-dx/gonetic"
 	"github.com/joy-dx/gophorth/examples/from-json-url/config"
 	"github.com/joy-dx/gophorth/examples/utils"
-	"github.com/joy-dx/gophorth/pkg/net"
 	"github.com/joy-dx/gophorth/pkg/releaser/releaserdto"
 	"github.com/joy-dx/gophorth/pkg/updater"
 	"github.com/joy-dx/gophorth/pkg/updater/updaterclients"
@@ -31,7 +31,7 @@ var (
 
 			cfgSvc := config.ProvideConfigSvc()
 			relaySvc := relay.ProvideRelaySvc(nil)
-			netSvc := net.ProvideNetSvc(nil)
+			netSvc := gonetic.ProvideNetSvc(nil)
 
 			relaySvc.Info(updater.RlyUpdaterLog{Msg: "Starting updater"})
 			// Root context cancelled on SIGINT/SIGTERM

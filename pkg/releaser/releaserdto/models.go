@@ -3,7 +3,7 @@ package releaserdto
 import (
 	"time"
 
-	"github.com/joy-dx/gophorth/pkg/net/netdto"
+	netDTO "github.com/joy-dx/gonetic/dto"
 )
 
 type ReleaserState struct {
@@ -13,7 +13,7 @@ type ReleaserState struct {
 }
 
 type AgentCfg struct {
-	NetSvc        netdto.NetInterface
+	NetSvc        netDTO.NetInterface
 	UpdaterCfg    ReleaserConfig
 	ReleasesFound []ReleaseAsset
 }

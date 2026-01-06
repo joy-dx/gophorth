@@ -3,7 +3,7 @@ package updaterclients
 import (
 	"context"
 
-	"github.com/joy-dx/gophorth/pkg/net/netdto"
+	netDTO "github.com/joy-dx/gonetic/dto"
 	"github.com/joy-dx/gophorth/pkg/releaser/releaserdto"
 	"github.com/joy-dx/gophorth/pkg/updater/updaterdto"
 	"github.com/joy-dx/relay/dto"
@@ -30,7 +30,7 @@ func (c *FromNetConfig) WithUserFetchFunction(checkFunc NetCheckFunc) *FromNetCo
 }
 
 type NetAgentCfg struct {
-	NetSvc      netdto.NetInterface
+	NetSvc      netDTO.NetInterface
 	Relay       dto.RelayInterface
 	UpdaterCfg  updaterdto.UpdaterConfig
 	VersionLink *releaserdto.ReleaseAsset

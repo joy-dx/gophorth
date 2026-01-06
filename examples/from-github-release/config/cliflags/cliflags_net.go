@@ -1,4 +1,4 @@
-package netconfig
+package cliflags
 
 import (
 	"time"
@@ -8,12 +8,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const ConfigPrefix = "net"
+const NetConfigPrefix = "net"
 
-func CobraAndViper(cmd *cobra.Command) {
+func NetCobraAndViper(cmd *cobra.Command) {
 	configBuilder := builder.ConfigBuilder{}
 	configBuilder.SetCommand(cmd)
-	configBuilder.SetConfigPrefix([]string{ConfigPrefix})
+	configBuilder.SetConfigPrefix([]string{NetConfigPrefix})
 	configBuilder.AddStringMapParam(options.NetExtraHeaders, map[string]string{}, "Extra headers to include in requests e.g. {\"x-agent\": \"joydx\"")
 	configBuilder.AddDurationParam(options.NetDownloadCallbackInterval, time.Duration(2*time.Second), "Download polling interval to report on download progress")
 	configBuilder.AddDurationParam(options.NetRequestTimeout, time.Duration(300*time.Second), "Time allowed in seconds for net requests to take before timing out")

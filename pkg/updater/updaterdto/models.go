@@ -3,7 +3,7 @@ package updaterdto
 import (
 	"time"
 
-	"github.com/joy-dx/gophorth/pkg/net/netdto"
+	netDTO "github.com/joy-dx/gonetic/dto"
 	"github.com/joy-dx/gophorth/pkg/releaser/releaserdto"
 )
 
@@ -20,7 +20,7 @@ type UpdaterState struct {
 }
 
 type UpdaterAgentCfg struct {
-	NetSvc        netdto.NetInterface
+	NetSvc        netDTO.NetInterface
 	UpdaterCfg    UpdaterConfig
 	VersionUpdate *releaserdto.ReleaseAsset
 }
