@@ -93,7 +93,7 @@ func (s *UpdaterSvc) Hydrate(ctx context.Context) error {
 	}
 
 	if s.cfg.Version != "" {
-		parsedVersion, err := semver.StrictNewVersion(s.cfg.Version)
+		parsedVersion, err := semver.NewVersion(s.cfg.Version)
 		if err != nil {
 			return fmt.Errorf("could not parse release version: %w", err)
 		}
