@@ -3,7 +3,7 @@ package updaterclients
 import (
 	"context"
 
-	"github.com/google/go-github/v74/github"
+	"github.com/google/go-github/v81/github"
 	netDTO "github.com/joy-dx/gonetic/dto"
 	"github.com/joy-dx/gophorth/pkg/releaser/releaserdto"
 	"github.com/joy-dx/gophorth/pkg/updater/updaterdto"

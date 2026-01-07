@@ -42,8 +42,8 @@ github.com/jchv/go-winloader v0.0.0-20250406163304-c1995be93bd1 h1:njuLRcjAuMKr7
 github.com/jchv/go-winloader v0.0.0-20250406163304-c1995be93bd1/go.mod h1:alcuEEnZsY1WQsagKhZDsoPCRoOijYqhZvPwLG0kzVs=
 github.com/joy-dx/gonetic v1.0.3 h1:bWOAuvO6gWL+0Npe4Oijmgeqqt7ihQWV4M/TJuOYM4A=
 github.com/joy-dx/gonetic v1.0.3/go.mod h1:7/exYNd0dEdNeVmeAWy+rm2cYDmorYYlhH+zBz+zcHM=
-github.com/joy-dx/gophorth v0.4.0 h1:e/TSRTcY8WBjY0TZEDvfr/8wv3J7PjPUHVeYbkouPUQ=
-github.com/joy-dx/gophorth v0.4.0/go.mod h1:1En/8fStDryy5W7DsPjMTNppLxFF5uBtLcHlxDfZwD0=
+github.com/joy-dx/gophorth v0.4.5 h1:4io3LqPFcnK0vX5+oTRBUSi0k4w68fhOp3Vzf2+p3uw=
+github.com/joy-dx/gophorth v0.4.5/go.mod h1:1En/8fStDryy5W7DsPjMTNppLxFF5uBtLcHlxDfZwD0=
 github.com/joy-dx/lockablemap v1.0.1 h1:+XmQJ4pKRcnkoorfjbKtPScrrUqrDwj7La+WXhptmuc=
 github.com/joy-dx/lockablemap v1.0.1/go.mod h1:fUbvsgi9SRM88P8KocoZug3Og7x/4zVdmh87lvPNJGc=
 github.com/joy-dx/relay v1.1.0 h1:Kh49lcVExTwb4hbT/zIxc4B6L0bYz92n9o9iWrYTbtk=

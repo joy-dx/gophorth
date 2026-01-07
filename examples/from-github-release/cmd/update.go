@@ -14,7 +14,7 @@ import (
 	"github.com/joy-dx/gophorth/examples/from-github-release/config"
 	"github.com/joy-dx/relay"
 
-	"github.com/google/go-github/v74/github"
+	"github.com/google/go-github/v81/github"
 	"github.com/joy-dx/gonetic"
 	"github.com/joy-dx/gophorth/pkg/updater"
 	"github.com/joy-dx/gophorth/pkg/updater/updaterclients"

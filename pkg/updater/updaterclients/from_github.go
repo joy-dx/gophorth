@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/google/go-github/v74/github"
+	"github.com/google/go-github/v81/github"
 	"github.com/joy-dx/gophorth/pkg/cryptography"
 	"github.com/joy-dx/gophorth/pkg/file"
 	"github.com/joy-dx/gophorth/pkg/hydrate"
