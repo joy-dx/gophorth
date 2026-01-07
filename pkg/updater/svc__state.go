@@ -21,6 +21,10 @@ func (s *UpdaterSvc) UpdateLink() *releaserdto.ReleaseAsset {
 }
 
 func (s UpdaterSvc) State() *updaterdto.UpdaterState {
+	version := "unknown"
+	if s.version != nil {
+		version = s.version.String()
+	}
 	return &updaterdto.UpdaterState{
 		LastTimeCheckedUpdate: s.cfg.LastUpdateCheck,
 		UpdateLink:            s.contextUpdate,
@@ -29,7 +33,7 @@ func (s UpdaterSvc) State() *updaterdto.UpdaterState {
 		CheckInterval:         s.cfg.CheckInterval,
 		Log:                   s.updateLog,
 		LogPath:               s.cfg.LogPath,
-		Version:               s.version.String(),
+		Version:               version,
 	}
 }
 
