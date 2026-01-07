@@ -43,8 +43,9 @@ func (s UpdaterSvc) UpdateLog() string {
 
 func (s *UpdaterSvc) Hydrate(ctx context.Context) error {
 	if err := hydrate.NilCheck("net", map[string]interface{}{
-		"config": s.cfg,
-		"relay":  s.relay,
+		"config":      s.cfg,
+		"relay":       s.relay,
+		"checkClient": s.cfg.CheckClient,
 	}); err != nil {
 		return err
 	}
@@ -95,7 +96,9 @@ func (s *UpdaterSvc) Hydrate(ctx context.Context) error {
 	if s.cfg.Version != "" {
 		parsedVersion, err := semver.NewVersion(s.cfg.Version)
 		if err != nil {
-			return fmt.Errorf("could not parse release version: %w", err)
+			s.status = updaterdto.INOPERATIVE
+			s.relay.Warn(RlyUpdaterLog{Msg: fmt.Sprintf("could not parse release version: %s", err.Error())})
+			return updaterdto.ErrServiceInoperable
 		}
 		s.version = parsedVersion
 	}

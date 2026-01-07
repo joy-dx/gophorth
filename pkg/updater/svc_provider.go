@@ -17,6 +17,7 @@ func ProvideUpdaterSvc(cfg *updaterdto.UpdaterConfig) *UpdaterSvc {
 			cfg:    cfg,
 			netSvc: cfg.NetSvc,
 			relay:  cfg.Relay,
+			status: updaterdto.INITIAL,
 		}
 	})
 	return service

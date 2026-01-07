@@ -7,6 +7,7 @@ const (
 type UpdateStatus string
 
 const (
+	INOPERATIVE      UpdateStatus = "inoperative"
 	INITIAL          UpdateStatus = "initial"
 	UPDATE_AVAILABLE UpdateStatus = "update_available"
 	CHECKING         UpdateStatus = "checking"

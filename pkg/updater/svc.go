@@ -41,6 +41,10 @@ type UpdaterSvc struct {
 
 func (s *UpdaterSvc) CheckLatest(ctx context.Context) (releaserdto.ReleaseAsset, error) {
 
+	if s.status == updaterdto.INOPERATIVE {
+		return releaserdto.ReleaseAsset{}, errors.New("update service is inoperative, check startup logs for more information")
+	}
+
 	if s.cfg.CheckClient == nil {
 		return releaserdto.ReleaseAsset{}, errors.New("no check client configured")
 	}
