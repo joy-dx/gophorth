@@ -36,6 +36,7 @@ func (s UpdaterSvc) State() *updaterdto.UpdaterState {
 		PublicKey:       s.cfg.PublicKey,
 		PublicKeyPath:   s.cfg.PublicKeyPath,
 		ReleasedAt:      s.releasedAt,
+		Status:          s.status,
 		TemporaryPath:   s.cfg.TemporaryPath,
 		UpdateLink:      s.contextUpdate,
 		Updating:        false,

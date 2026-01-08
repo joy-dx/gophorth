@@ -18,6 +18,7 @@ type UpdaterState struct {
 	PublicKey       string                    `json:"updater_public_key"`
 	PublicKeyPath   string                    `json:"updater_public_key_path"`
 	ReleasedAt      *time.Time                `json:"updater_released_at" ts_type:"string"`
+	Status          UpdateStatus              `json:"updater_status"`
 	TemporaryPath   string                    `json:"updater_temporary_path"`
 	UpdateLink      *releaserdto.ReleaseAsset `json:"updater_update_link"`
 	Updating        bool                      `json:"updater_updating"`
