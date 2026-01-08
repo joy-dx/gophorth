@@ -14,8 +14,8 @@ type PrepareFuncType func(ctx context.Context, cfg *UpdaterAgentCfg) error
 
 // UpdaterConfig Service configuration struct
 type UpdaterConfig struct {
-	NetSvc netDTO.NetInterface
-	Relay  dto.RelayInterface
+	NetSvc netDTO.NetInterface `json:"-" yaml:"-" mapstructure:"-"`
+	Relay  dto.RelayInterface  `json:"-" yaml:"-" mapstructure:"-"`
 	// AllowDowngrade allows downgrading to older versions.
 	AllowDowngrade bool
 	// AllowPrerelease allows updating to pre-release versions.
@@ -41,13 +41,13 @@ type UpdaterConfig struct {
 	// LogPath Local file system path used during update as log path
 	LogPath string `json:"log_path,omitempty" yaml:"log_path,omitempty" mapstructure:"log_path"`
 	// CheckClient Agent for retrieving update information
-	CheckClient CheckClientInterface
+	CheckClient CheckClientInterface `json:"-" yaml:"-" mapstructure:"-"`
 	// DownloadFunc Optional override for downloading the artefact
-	DownloadFunc UpdateFuncType
+	DownloadFunc UpdateFuncType `json:"-" yaml:"-" mapstructure:"-"`
 	// PrepareFunc Preupdate preparation returning path for update material
-	PrepareFunc PrepareFuncType
+	PrepareFunc PrepareFuncType `json:"-" yaml:"-" mapstructure:"-"`
 	// Verifiers Additional procedures for verifying update integrity
-	Verifiers []VerificationMethodInterface
+	Verifiers []VerificationMethodInterface `json:"-" yaml:"-" mapstructure:"-"`
 }
 
 func DefaultUpdaterSvcConfig() UpdaterConfig {

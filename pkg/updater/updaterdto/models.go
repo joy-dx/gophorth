@@ -8,15 +8,21 @@ import (
 )
 
 type UpdaterState struct {
-	LastTimeCheckedUpdate *time.Time                `json:"updater_last_time_checked_update" ts_type:"string"`
-	UpdateLink            *releaserdto.ReleaseAsset `json:"updater_update_link"`
-	Changelog             string                    `json:"updater_changelog"`
-	ReleasedAt            *time.Time                `json:"updater_released_at" ts_type:"string"`
-	CheckInterval         time.Duration             `json:"updater_check_interval"`
-	Log                   string                    `json:"updater_log"`
-	LogPath               string                    `json:"updater_log_path"`
-	Updating              bool                      `json:"updater_updating"`
-	Version               string                    `json:"updater_version" yaml:"updater_version"`
+	Architecture    string                    `json:"architecture"`
+	Changelog       string                    `json:"updater_changelog"`
+	CheckInterval   time.Duration             `json:"updater_check_interval"`
+	LastUpdateCheck *time.Time                `json:"updater_last_update_check" ts_type:"string"`
+	Log             string                    `json:"updater_log"`
+	LogPath         string                    `json:"updater_log_path"`
+	Platform        string                    `json:"platform"`
+	PublicKey       string                    `json:"public_key"`
+	PublicKeyPath   string                    `json:"public_key_path"`
+	ReleasedAt      *time.Time                `json:"updater_released_at" ts_type:"string"`
+	TemporaryPath   string                    `json:"temporary_path"`
+	UpdateLink      *releaserdto.ReleaseAsset `json:"updater_update_link"`
+	Updating        bool                      `json:"updater_updating"`
+	Variant         string                    `json:"variant"`
+	Version         string                    `json:"updater_version" yaml:"updater_version"`
 }
 
 type UpdaterAgentCfg struct {

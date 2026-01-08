@@ -26,14 +26,21 @@ func (s UpdaterSvc) State() *updaterdto.UpdaterState {
 		version = s.version.String()
 	}
 	return &updaterdto.UpdaterState{
-		LastTimeCheckedUpdate: s.cfg.LastUpdateCheck,
-		UpdateLink:            s.contextUpdate,
-		Changelog:             s.changelog,
-		ReleasedAt:            s.releasedAt,
-		CheckInterval:         s.cfg.CheckInterval,
-		Log:                   s.updateLog,
-		LogPath:               s.cfg.LogPath,
-		Version:               version,
+		Architecture:    s.cfg.Architecture,
+		Changelog:       s.changelog,
+		CheckInterval:   s.cfg.CheckInterval,
+		LastUpdateCheck: s.cfg.LastUpdateCheck,
+		Log:             s.updateLog,
+		LogPath:         s.cfg.LogPath,
+		Platform:        s.cfg.Platform,
+		PublicKey:       s.cfg.PublicKey,
+		PublicKeyPath:   s.cfg.PublicKeyPath,
+		ReleasedAt:      s.releasedAt,
+		TemporaryPath:   s.cfg.TemporaryPath,
+		UpdateLink:      s.contextUpdate,
+		Updating:        false,
+		Variant:         s.cfg.Variant,
+		Version:         version,
 	}
 }
 
