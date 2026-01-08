@@ -112,6 +112,8 @@ func (s *UpdaterSvc) Hydrate(ctx context.Context) error {
 			return updaterdto.ErrServiceInoperable
 		}
 		s.version = parsedVersion
+	} else {
+		s.status = updaterdto.INOPERATIVE
 	}
 
 	needUpdateCheck := true
@@ -124,7 +126,7 @@ func (s *UpdaterSvc) Hydrate(ctx context.Context) error {
 		}
 	}
 
-	if needUpdateCheck {
+	if needUpdateCheck && s.status != updaterdto.INOPERATIVE {
 		s.relay.Debug(RlyUpdaterLog{Msg: "update has crossed check interval, checking in BG"})
 		go func() {
 			if _, checkErr := s.CheckLatest(ctx); checkErr != nil {
