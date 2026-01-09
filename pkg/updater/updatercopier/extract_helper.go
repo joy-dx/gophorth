@@ -14,6 +14,8 @@ func ExtractHelper(extractPath string) (string, error) {
 	switch runtime.GOOS {
 	case "darwin":
 		helperNameBuilder.WriteString("assets/update-helper-darwin")
+	case "windows":
+		helperNameBuilder.WriteString("assets/update-helper-windows.exe")
 	default:
 		helperNameBuilder.WriteString("assets/update-helper-linux")
 	}
