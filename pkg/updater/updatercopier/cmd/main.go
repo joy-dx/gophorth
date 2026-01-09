@@ -1,95 +1,183 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"log"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"time"
 )
 
+const (
+	// used as a fallback to create log path if no path given
+	appName             = "gophorth"
+	defaultLogFileName  = "gophorth-update.log"
+	replaceAttempts     = 15
+	replaceAttemptDelay = 3 * time.Second
+)
+
+// aliases for functions to make testing simpler
+var (
+	osRename    = os.Rename
+	osRemoveAll = os.RemoveAll
+	timeSleep   = time.Sleep
+)
+
 func main() {
-	if len(os.Args) < 3 {
-		fmt.Println("Usage: update-helper <old_path> <new_path> <log_path>")
+	pathToReplace, replacementPath, requestedLogPath, launchArgs, err :=
+		parseArgs(os.Args)
+	if err != nil {
+		_, _ = fmt.Fprintln(os.Stderr, err.Error())
+		_, _ = fmt.Fprintln(os.Stderr,
+			"Usage: update-helper <old_path> <new_path> [log_path] [-- <args...>] [--args \"...\"]",
+		)
 		os.Exit(1)
 	}
 
-	pathToReplace := os.Args[1]
-	replacementFilePath := os.Args[2]
+	pathToReplace = normalizePath(pathToReplace)
+	replacementPath = normalizePath(replacementPath)
 
-	logPath := "./gophorth-update.log"
-	if len(os.Args) >= 4 {
-		logPath = os.Args[3]
+	logFile, logPath := openLogFile(requestedLogPath)
+	defer func() {
+		if logFile != nil {
+			_ = logFile.Close()
+		}
+	}()
+
+	logLine(logFile, "Writing log to: %s", logPath)
+	logLine(logFile, "Updater starting. old=%s new=%s", pathToReplace, replacementPath)
+	logLine(logFile, "Launch args: %q", launchArgs)
+
+	// Windows convention enforcement: ensure .exe when replacing a file target.
+	if runtime.GOOS == "windows" && filepath.Ext(pathToReplace) == "" {
+		pathToReplace += ".exe"
+		logLine(logFile, "Windows: normalized target to %s", pathToReplace)
 	}
-
-	log.Printf("Writing log to: %s\n", logPath)
-	logFile, _ := os.Create(logPath)
-	defer logFile.Close()
-
-	logLine(logFile, "Updater starting. old=%s new=%s", pathToReplace, replacementFilePath)
 
 	backupPath := pathToReplace + ".bak"
 
-	// Step 1: Back up existing binary
 	logLine(logFile, "Creating backup at %s", backupPath)
 	if err := copyPath(pathToReplace, backupPath); err != nil {
 		logLine(logFile, "Backup failed: %v", err)
 		os.Exit(1)
 	}
 
-	// Step 2: Wait for main app to fully exit
-	successfulRename := false
-	logLine(logFile, "Starting rename process")
-	for i := 0; i < 20; i++ {
-		if err := os.RemoveAll(pathToReplace); err != nil {
-			logLine(logFile, "Failed to remove old version (attempt %d): %v", i+1, err)
-			time.Sleep(1 * time.Second)
-			continue
-		}
-		if err := os.Rename(replacementFilePath, pathToReplace); err != nil {
-			logLine(logFile, "renaming failed attempt %d: %v", i+1, err)
-			time.Sleep(1 * time.Second)
-		} else {
-			logLine(logFile, "Successfully replaced old binary.")
-			successfulRename = true
-			break
-		}
+	logLine(logFile, "Starting replace process (attempts=%d, delay=%s)",
+		replaceAttempts, replaceAttemptDelay)
 
-	}
-
-	if !successfulRename {
-		logLine(logFile, "Replacement failed after 20 attempts. Restoring backup.")
-		restoreBackup(logFile, backupPath, pathToReplace)
+	if err := replaceWithRetry(logFile, pathToReplace, replacementPath); err != nil {
+		logLine(logFile, "Replacement failed: %v", err)
+		logLine(logFile, "Restoring backup.")
+		restoreBackup(logFile, backupPath, pathToReplace, launchArgs)
 		os.Exit(2)
 	}
 
-	logLine(logFile, "Attempting to launch new binary")
-	if err := launchApp(logFile, pathToReplace); err != nil {
+	logLine(logFile, "Attempting to launch new target")
+	if err := launchApp(logFile, pathToReplace, launchArgs); err != nil {
 		logLine(logFile, "Launch failed: %v", err)
 		logLine(logFile, "Rolling back to backup.")
-		restoreBackup(logFile, backupPath, pathToReplace)
+		restoreBackup(logFile, backupPath, pathToReplace, launchArgs)
 		os.Exit(3)
 	}
 
-	logLine(logFile, "New binary launched successfully.")
-	cleanupHelper(logFile, backupPath)
+	logLine(logFile, "New target launched successfully.")
+	cleanupBackup(logFile, backupPath)
+	scheduleSelfDelete(logFile)
 	logLine(logFile, "Helper finished.")
+}
 
+func normalizePath(p string) string {
+	p = filepath.Clean(p)
+	abs, err := filepath.Abs(p)
+	if err != nil {
+		return p
+	}
+	return abs
+}
+
+func replaceWithRetry(logFile *os.File, targetPath, replacementPath string) error {
+	var lastErr error
+
+	for i := 0; i < replaceAttempts; i++ {
+		if err := removeTarget(targetPath); err != nil {
+			lastErr = err
+			logLine(logFile, "Failed to remove target (attempt %d/%d): %v",
+				i+1, replaceAttempts, err)
+			timeSleep(replaceAttemptDelay)
+			continue
+		}
+
+		// Attempt rename first (fast/atomic when possible).
+		if err := osRename(replacementPath, targetPath); err == nil {
+			logLine(logFile, "Replaced using rename.")
+			return nil
+		} else {
+			lastErr = err
+			logLine(logFile, "Rename failed (attempt %d/%d): %v",
+				i+1, replaceAttempts, err)
+		}
+
+		// Fallback: copy+remove (handles cross-volume / different drive).
+		if err := copyPath(replacementPath, targetPath); err != nil {
+			lastErr = err
+			logLine(logFile, "Copy fallback failed (attempt %d/%d): %v",
+				i+1, replaceAttempts, err)
+			timeSleep(replaceAttemptDelay)
+			continue
+		}
+		if err := osRemoveAll(replacementPath); err != nil {
+			// Not fatal; we successfully replaced target.
+			logLine(logFile, "Warning: failed to remove replacement source %s: %v",
+				replacementPath, err)
+		}
+
+		logLine(logFile, "Replaced using copy+remove fallback.")
+		return nil
+	}
+
+	if lastErr == nil {
+		lastErr = errors.New("replacement failed for unknown reasons")
+	}
+	return fmt.Errorf("replacement failed after %d attempts: %w", replaceAttempts, lastErr)
+}
+
+func removeTarget(targetPath string) error {
+	_, err := os.Lstat(targetPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+
+	// Only macOS uses RemoveAll in case we are dealing with .app
+	if runtime.GOOS == "darwin" {
+		return osRemoveAll(targetPath)
+	}
+
+	return os.Remove(targetPath)
+}
+
+func cleanupBackup(logFile *os.File, backupPath string) {
+	logLine(logFile, "Cleaning backup at %s", backupPath)
+	if err := osRemoveAll(backupPath); err != nil {
+		logLine(logFile, "Error cleaning backup %s: %v", backupPath, err)
+	}
 }
 
 // Detects if the path is a directory (.app on mac) and copies accordingly.
 func copyPath(src, dst string) error {
-	info, err := os.Stat(src)
+	info, err := os.Lstat(src)
 	if err != nil {
 		return err
 	}
 
-	// On macOS, .app is actually a directory
-	if runtime.GOOS == "darwin" && info.IsDir() && filepath.Ext(src) == ".app" {
-		return copyDir(src, dst)
+	// If src is a symlink, preserve it (on Unix); on Windows symlinks may require privileges.
+	if info.Mode()&os.ModeSymlink != 0 {
+		return copySymlink(src, dst)
 	}
 
 	if info.IsDir() {
@@ -98,129 +186,128 @@ func copyPath(src, dst string) error {
 	return copyFile(src, dst)
 }
 
-// For regular file copy
 func copyFile(src, dst string) error {
+	srcInfo, err := os.Stat(src)
+	if err != nil {
+		return err
+	}
+
+	_ = clearReadOnly(dst)
+
 	srcFile, err := os.Open(src)
 	if err != nil {
 		return err
 	}
 	defer srcFile.Close()
 
+	// Ensure destination directory exists.
+	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
+		return err
+	}
+
 	dstFile, err := os.Create(dst)
 	if err != nil {
 		return err
 	}
-	defer dstFile.Close()
+	defer func() { _ = dstFile.Close() }()
 
 	if _, err := io.Copy(dstFile, srcFile); err != nil {
 		return err
 	}
-	return dstFile.Sync()
+	if err := dstFile.Sync(); err != nil {
+		return err
+	}
+
+	// Preserve mode on Unix-like systems.
+	if runtime.GOOS != "windows" {
+		if err := os.Chmod(dst, srcInfo.Mode()); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
-// For recursive directory copy (used for .app and fallback dirs)
 func copyDir(src, dst string) error {
 	info, err := os.Stat(src)
 	if err != nil {
 		return err
 	}
+
+	// Create dst directory.
 	if err := os.MkdirAll(dst, info.Mode()); err != nil {
 		return err
 	}
+
 	entries, err := os.ReadDir(src)
 	if err != nil {
 		return err
 	}
+
 	for _, entry := range entries {
 		srcPath := filepath.Join(src, entry.Name())
 		dstPath := filepath.Join(dst, entry.Name())
-		if entry.IsDir() {
-			if err := copyDir(srcPath, dstPath); err != nil {
-				return err
-			}
-		} else {
-			if err := copyFile(srcPath, dstPath); err != nil {
-				return err
-			}
+
+		if err := copyEntry(srcPath, dstPath, entry); err != nil {
+			return err
 		}
 	}
+
+	// Preserve mode on Unix-like systems for directories as well (best-effort).
+	if runtime.GOOS != "windows" {
+		_ = os.Chmod(dst, info.Mode())
+	}
+
 	return nil
 }
 
-func cleanupHelper(logFile *os.File, backupPath string) {
-	logLine(logFile, "Cleaning temporary files.")
-
-	// Remove backup — works for files or .app directories
-	if err := os.RemoveAll(backupPath); err != nil {
-		logLine(logFile, fmt.Sprintf(
-			"Error cleaning up backup files at %s: %v", backupPath, err,
-		))
-	}
-
-	// Self-delete after leaving a short delay
-	self := os.Args[0]
-	go func() {
-		time.Sleep(1 * time.Second)
-		if err := os.RemoveAll(self); err != nil {
-			logLine(logFile, fmt.Sprintf(
-				"Error removing helper (%s): %v", self, err,
-			))
-		} else {
-			logLine(logFile, "Helper self-deleted successfully.")
-		}
-	}()
-}
-
-// launchApp starts the target application in a platform‑safe way.
-// On macOS, it supports both .app bundles (via "open -n") and regular binaries.
-// On other OSes, it just launches the binary directly.
-func launchApp(logFile *os.File, path string) error {
-	var cmd *exec.Cmd
-
-	if runtime.GOOS == "darwin" && filepath.Ext(path) == ".app" {
-		logLine(logFile, ".app on darwin detected, using open")
-		// GUI‑friendly macOS launch
-		cmd = exec.Command("open", "-n", path)
-	} else {
-		cmd = exec.Command(path)
-	}
-
-	if err := cmd.Start(); err != nil {
-		logLine(logFile, "Launch failed for %s: %v", path, err)
+func copyEntry(srcPath, dstPath string, entry os.DirEntry) error {
+	// Use Lstat to detect symlinks correctly.
+	info, err := os.Lstat(srcPath)
+	if err != nil {
 		return err
 	}
 
-	logLine(logFile, "Launch successful: %s", path)
-	return nil
+	if info.Mode()&os.ModeSymlink != 0 {
+		return copySymlink(srcPath, dstPath)
+	}
+
+	if entry.IsDir() {
+		return copyDir(srcPath, dstPath)
+	}
+	return copyFile(srcPath, dstPath)
+}
+
+func copySymlink(src, dst string) error {
+	// On Unix/mac this preserves symlinks; on Windows it may fail without privileges.
+	target, err := os.Readlink(src)
+	if err != nil {
+		return err
+	}
+
+	// Ensure dst parent exists.
+	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
+		return err
+	}
+
+	// If dst exists, remove it first (best-effort).
+	_ = os.Remove(dst)
+
+	return os.Symlink(target, dst)
 }
 
 func logLine(logFile *os.File, msg string, args ...interface{}) {
-	entry := fmt.Sprintf("%s: %s\n",
+	line := fmt.Sprintf(
+		"%s: %s",
 		time.Now().Format("2006-01-02 15:04:05"),
-		fmt.Sprintf(msg, args...))
-	log.Println(entry)
-	if _, err := logFile.WriteString(entry); err != nil {
-		log.Printf("Failed to write to log file: %v", err)
-	}
-}
+		fmt.Sprintf(msg, args...),
+	)
 
-func restoreBackup(logFile *os.File, backupPath, targetPath string) {
-	logLine(logFile, "Restoring backup from %s to %s", backupPath, targetPath)
-
-	// Remove existing broken version (handles .app directories)
-	if err := os.RemoveAll(targetPath); err != nil {
-		logLine(logFile, "Failed to remove unwanted new version: %v", err)
-	}
-
-	// Move backup into place
-	if err := os.Rename(backupPath, targetPath); err != nil {
-		logLine(logFile, "Failed to restore backup: %v", err)
+	log.Println(line)
+	if logFile == nil {
 		return
 	}
-
-	if err := launchApp(logFile, targetPath); err != nil {
-		logLine(logFile, "Failed to start restored version: %v", err)
-	} else {
-		logLine(logFile, "Old version relaunched successfully.")
+	if _, err := logFile.WriteString(line + "\n"); err != nil {
+		log.Printf("Failed to write to log file: %v", err)
 	}
 }
