@@ -3,10 +3,10 @@
 package main
 
 import (
+	"golang.org/x/sys/windows"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"syscall"
 )
 
 func scheduleSelfDelete(logFile *os.File) {
@@ -24,8 +24,8 @@ func scheduleSelfDelete(logFile *os.File) {
 	command := "ping 127.0.0.1 -n 3 >NUL & del /F /Q \"" + escaped + "\""
 
 	cmd := exec.Command("cmd.exe", "/V:OFF", "/S", "/C", command)
-	cmd.SysProcAttr = &syscall.SysProcAttr{
-		CreationFlags: syscall.CREATE_NEW_PROCESS_GROUP | syscall.DETACHED_PROCESS,
+	cmd.SysProcAttr = &windows.SysProcAttr{
+		CreationFlags: windows.CREATE_NEW_PROCESS_GROUP | windows.DETACHED_PROCESS,
 	}
 
 	if err := cmd.Start(); err != nil {

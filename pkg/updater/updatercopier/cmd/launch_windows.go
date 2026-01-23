@@ -3,15 +3,15 @@
 package main
 
 import (
+	"golang.org/x/sys/windows"
 	"os"
 	"os/exec"
-	"syscall"
 )
 
 func launchApp(logFile *os.File, path string, args []string) error {
 	cmd := exec.Command(path, args...)
-	cmd.SysProcAttr = &syscall.SysProcAttr{
-		CreationFlags: syscall.CREATE_NEW_PROCESS_GROUP | syscall.DETACHED_PROCESS,
+	cmd.SysProcAttr = &windows.SysProcAttr{
+		CreationFlags: windows.CREATE_NEW_PROCESS_GROUP | windows.DETACHED_PROCESS,
 	}
 
 	if err := cmd.Start(); err != nil {

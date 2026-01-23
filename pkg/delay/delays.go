@@ -26,8 +26,8 @@ func (d ConstantDelay) Wait(task string, attempt int) {
 type ExponentialBackoff struct{}
 
 func (d ExponentialBackoff) Wait(task string, attempt int) {
-	backoff := time.Duration(math.Min(2*math.Pow(2, float64(attempt)), 10))
-	// Add jitter to the backoff to avoid retry collisions.
-	jitter := time.Duration(rand.Float64() * float64(backoff) * 0.5)
-	time.Sleep((backoff + jitter) * time.Second)
+	backoffSeconds := math.Min(2*math.Pow(2, float64(attempt)), 10)
+	backoff := time.Duration(backoffSeconds * float64(time.Second))
+	jitter := time.Duration(rand.Float64() * backoffSeconds * 0.5 * float64(time.Second))
+	time.Sleep(backoff + jitter)
 }

@@ -11,12 +11,12 @@ type ProcessReleasesFuncType func(ctx context.Context, config AgentCfg) error
 
 // ReleaserConfig Service configuration struct
 type ReleaserConfig struct {
-	NetSvc         netDTO.NetInterface
-	Relay          dto.RelayInterface
-	DownloadPrefix string `json:"download_prefix" yaml:"download_prefix"`
+	NetSvc         netDTO.NetInterface `json:"-" yaml:"-" mapstructure:"-"`
+	Relay          dto.RelayInterface  `json:"-" yaml:"-" mapstructure:"-"`
+	DownloadPrefix string              `json:"download_prefix" yaml:"download_prefix"`
 	// OutputPath FS Path where generated artefacts will be saved
-	OutputPath          string `json:"output_path" yaml:"output_path" mapstructure:"output_path"`
-	ProcessReleasesFunc ProcessReleasesFuncType
+	OutputPath          string                  `json:"output_path" yaml:"output_path" mapstructure:"output_path"`
+	ProcessReleasesFunc ProcessReleasesFuncType `json:"-" yaml:"-" mapstructure:"-"`
 	// TargetPath FS path to published artefacts
 	TargetPath string `json:"target_path" yaml:"target_path" mapstructure:"target_path"`
 	// FilePattern name the published app to be processed starts with
