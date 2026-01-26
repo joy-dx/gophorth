@@ -152,6 +152,8 @@ case updaterdto.UPDATE_AVAILABLE:
     }
 case updaterdto.UP_TO_DATE:
     relaySvc.Info(updater.RlyUpdaterLog{Msg: fmt.Sprintf("already up to date: %s", latestVersion.Version)})
+case updaterdto.COMPLETE:
+	relaySvc.Info(updater.RlyUpdaterLog{Msg: fmt.Sprintf("update complete: %s", latestVersion.Version)})	
 default:
     relaySvc.Info(updater.RlyUpdaterLog{Msg: fmt.Sprintf("unhandled download state: %s", updaterSvc.Status())})
 }
