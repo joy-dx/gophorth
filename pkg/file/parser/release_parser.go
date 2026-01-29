@@ -1,744 +1,695 @@
-// parser.go
 package parser
 
 import (
+	"errors"
 	"fmt"
-	"log"
 	"regexp"
+	"sort"
 	"strings"
 	"sync"
-	"time"
 )
 
-// Default pattern constraints
-const (
-	DefaultMaxInputLength   = 512
-	DefaultMaxTemplateLen   = 1024
-	DefaultMaxRegexLen      = 4096
-	DefaultParseTimeout     = 100 * time.Millisecond
-	DefaultRegexTestLen     = 100
-	DefaultRegexTestTimeout = 50 * time.Millisecond
-)
-
-// Predefined patterns with bounded quantifiers
+// Errors
 var (
-	PatVersion = `[0-9]{1,4}(?:\.[0-9]{1,4}){0,3}(?:[-+][0-9A-Za-z._+-]{1,50})?`
-	PatArch    = `(?i:(?:x86_64(?:_v[234])?|x86-64(?:-v[234])?|amd64|arm64|aarch64|i386|i686|universal))`
-	PatOS      = `(?i:linux|darwin|macos|mac|osx|windows|win32|win64|freebsd|openbsd|netbsd)`
-	PatTriple  = `(?:unknown-linux-gnu|apple-darwin|pc-windows-(?:msvc|gnu)|linux-musl)`
-	PatVariant = `[A-Za-z0-9+._-]{1,100}`
-	PatWord    = `[A-Za-z0-9._-]{1,100}`
-	PatIdent   = `[A-Za-z][A-Za-z0-9._-]{0,99}`
+	ErrNoMatch         = errors.New("no match")
+	ErrInvalidPattern  = errors.New("invalid pattern")
+	ErrUnknownPlatform = errors.New("unknown platform")
+	ErrUnknownArch     = errors.New("unknown architecture")
+	ErrUnknownFormat   = errors.New("unknown format")
 )
 
-// FieldSpec defines the regexp fragment and optional normalizer for a field.
-type FieldSpec struct {
-	Pattern   string
-	Normalize func(string) (string, error)
+// Artifact represents structured information extracted from a filename.
+type Artifact struct {
+	Platform string // normalized: darwin|linux|windows
+	Arch     string // normalized: arm64|amd64|386|armv7|...
+	Format   string // e.g. tar.gz, zip, tar.zst
+	Version  string // e.g. 10.3.1, 1.3.0-rc.2, v3.0.0-beta.11
+	Ext      string // e.g. gz, zip (single extension)
+	Variant  string // enum-like value constrained by pattern
 }
 
-// ParseResult represents a successful parse.
+// FilenameParser is a compiled filename pattern parser.
+// Safe for concurrent use after compilation.
+type FilenameParser struct {
+	pattern     string
+	re          *regexp.Regexp
+	hasVersion  bool
+	hasFormat   bool
+	hasArch     bool
+	hasPlatform bool
+	mu          sync.RWMutex // For future extensibility
+}
+
+// ParseResult contains successful parse and any warnings.
 type ParseResult struct {
-	Fields   map[string]string
-	Template string
-	Raw      string
+	Artifact Artifact
+	Warnings []string
 }
 
-// ParseError represents a parsing error.
-type ParseError struct {
-	Input    string
-	Position int
-	Message  string
-	Err      error
+// CompileOptions configures pattern compilation behavior.
+type CompileOptions struct {
+	// AllowPartialMatch allows matching even if some fields are missing
+	AllowPartialMatch bool
+	// CaseSensitive makes platform/arch matching case-sensitive
+	CaseSensitive bool
 }
 
-func (e *ParseError) Error() string {
-	if e.Position >= 0 {
-		return fmt.Sprintf("parse error at position %d in %q: %s", e.Position, e.Input, e.Message)
-	}
-	return fmt.Sprintf("parse error in %q: %s", e.Input, e.Message)
-}
-
-func (e *ParseError) Unwrap() error {
-	return e.Err
-}
-
-// MetricsCollector allows observability hooks.
-type MetricsCollector interface {
-	RecordParseAttempt(template string, success bool, duration time.Duration)
-	RecordRegexTimeout(template string)
-	RecordTemplateCompilation(template string, success bool)
-}
-
-// Parser compiles reverse templates to regexps with named capture groups.
-type Parser struct {
-	fieldSpecs     map[string]FieldSpec
-	defaultPattern string
-	compiled       []*compiledTemplate
-	sealed         bool
-
-	// Configuration
-	maxInputLen      int
-	maxTemplateLen   int
-	maxRegexLen      int
-	parseTimeout     time.Duration
-	regexTestTimeout time.Duration
-
-	// Observability
-	logger  *log.Logger
-	metrics MetricsCollector
-
-	mu sync.RWMutex
-}
-
-type compiledTemplate struct {
-	template string
-	re       *regexp.Regexp
-	fields   []string
-}
-
-// ParserBuilder provides a fluent interface for constructing a Parser.
-type ParserBuilder struct {
-	specs            map[string]FieldSpec
-	defaultPattern   string
-	maxInputLen      int
-	maxTemplateLen   int
-	maxRegexLen      int
-	parseTimeout     time.Duration
-	regexTestTimeout time.Duration
-	logger           *log.Logger
-	metrics          MetricsCollector
-}
-
-// NewParserBuilder creates a new parser builder with sensible defaults.
-func NewParserBuilder() *ParserBuilder {
-	return &ParserBuilder{
-		specs:            make(map[string]FieldSpec),
-		defaultPattern:   `[^/_\s\.-]{1,100}(?:[._-][^/_\s\.-]{1,100}){0,10}`,
-		maxInputLen:      DefaultMaxInputLength,
-		maxTemplateLen:   DefaultMaxTemplateLen,
-		maxRegexLen:      DefaultMaxRegexLen,
-		parseTimeout:     DefaultParseTimeout,
-		regexTestTimeout: DefaultRegexTestTimeout,
+// DefaultOptions returns sensible default compilation options.
+func DefaultOptions() CompileOptions {
+	return CompileOptions{
+		AllowPartialMatch: false,
+		CaseSensitive:     false,
 	}
 }
 
-// WithField registers a field specification.
-func (b *ParserBuilder) WithField(name string, spec FieldSpec) *ParserBuilder {
-	b.specs[name] = spec
-	return b
-}
-
-// WithDefaultPattern sets the default pattern for unspecified fields.
-func (b *ParserBuilder) WithDefaultPattern(pattern string) *ParserBuilder {
-	b.defaultPattern = pattern
-	return b
-}
-
-// WithMaxInputLength sets the maximum allowed input length.
-func (b *ParserBuilder) WithMaxInputLength(n int) *ParserBuilder {
-	b.maxInputLen = n
-	return b
-}
-
-// WithMaxTemplateLength sets the maximum allowed template length.
-func (b *ParserBuilder) WithMaxTemplateLength(n int) *ParserBuilder {
-	b.maxTemplateLen = n
-	return b
-}
-
-// WithParseTimeout sets the timeout for parsing operations.
-func (b *ParserBuilder) WithParseTimeout(d time.Duration) *ParserBuilder {
-	b.parseTimeout = d
-	return b
-}
-
-// WithLogger sets the logger.
-func (b *ParserBuilder) WithLogger(logger *log.Logger) *ParserBuilder {
-	b.logger = logger
-	return b
-}
-
-// WithMetrics sets the metrics collector.
-func (b *ParserBuilder) WithMetrics(metrics MetricsCollector) *ParserBuilder {
-	b.metrics = metrics
-	return b
-}
-
-// Build constructs the Parser.
-func (b *ParserBuilder) Build() (*Parser, error) {
-	if b.defaultPattern == "" {
-		return nil, fmt.Errorf("default pattern cannot be empty")
-	}
-
-	// Test compile the default pattern
-	if _, err := regexp.Compile(b.defaultPattern); err != nil {
-		return nil, fmt.Errorf("invalid default pattern: %w", err)
-	}
-
-	return &Parser{
-		fieldSpecs:       b.specs,
-		defaultPattern:   b.defaultPattern,
-		compiled:         make([]*compiledTemplate, 0),
-		maxInputLen:      b.maxInputLen,
-		maxTemplateLen:   b.maxTemplateLen,
-		maxRegexLen:      b.maxRegexLen,
-		parseTimeout:     b.parseTimeout,
-		regexTestTimeout: b.regexTestTimeout,
-		logger:           b.logger,
-		metrics:          b.metrics,
-	}, nil
-}
-
-// NewReleaseParser creates a parser with sensible defaults for release filenames.
-func NewReleaseParser() (*Parser, error) {
-	return NewParserBuilder().
-		WithField("name", FieldSpec{Pattern: PatIdent}).
-		WithField("version", FieldSpec{Pattern: PatVersion}).
-		WithField("arch", FieldSpec{
-			Pattern:   PatArch,
-			Normalize: ArchNormalizer,
-		}).
-		WithField("os", FieldSpec{
-			Pattern:   PatOS,
-			Normalize: OSNormalizer,
-		}).
-		WithField("triple", FieldSpec{Pattern: PatTriple}).
-		WithField("variant", FieldSpec{Pattern: PatVariant}).
-		Build()
-}
-
-// ArchNormalizer normalizes architecture strings.
-func ArchNormalizer(s string) (string, error) {
-	switch strings.ToLower(s) {
-	case "x86_64", "x86-64", "amd64":
-		return "amd64", nil
-	case "arm64", "aarch64":
-		return "arm64", nil
-	case "x86_64_v3", "x86-64-v3":
-		return "amd64_v3", nil
-	case "x86_64_v2", "x86-64-v2":
-		return "amd64_v2", nil
-	case "x86_64_v4", "x86-64-v4":
-		return "amd64_v4", nil
-	case "i386", "i686":
-		return "386", nil
-	case "universal":
-		return "universal", nil
-	default:
-		return strings.ToLower(s), nil
-	}
-}
-
-// OSNormalizer normalizes OS strings.
-func OSNormalizer(s string) (string, error) {
-	switch strings.ToLower(s) {
-	case "darwin", "mac", "macos", "osx":
-		return "darwin", nil
-	case "linux":
-		return "linux", nil
-	case "windows", "win32", "win64":
-		return "windows", nil
-	case "freebsd":
-		return "freebsd", nil
-	case "openbsd":
-		return "openbsd", nil
-	case "netbsd":
-		return "netbsd", nil
-	default:
-		return s, nil
-	}
-}
-
-// AddTemplate compiles and registers a template.
+// CompileFilenamePattern compiles a filename pattern into a parser.
 //
-// Reverse-template features:
-//   - Literal text is escaped.
-//   - {field} becomes (?P<field>pattern).
-//   - {field?} makes the field optional as an optional named group.
-//   - Optional segment: "[...]?" makes the bracketed part optional.
-//   - To include literal '{' or '}', use '{{' or '}}'.
+// Supported tags:
+//   - {:platform} - OS platform (darwin, linux, windows)
+//   - {:platform?} - Optional platform
+//   - {:arch} - CPU architecture (arm64, amd64, 386, etc.)
+//   - {:arch?} - Optional architecture
+//   - {:format} - Archive format (tar.gz, zip, etc.)
+//   - {:format?} - Optional format
+//   - {:version} - Semantic version
+//   - {:version?} - Optional version
+//   - {:ext} - Single file extension
+//   - {:variant["a","b"]} - Enum-like allowed values
 //
-// Example: "{name}-{version}[-{variant}?]?_{os}-{arch}.tar.gz"
-func (p *Parser) AddTemplate(tmpl string) error {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-
-	if p.sealed {
-		return fmt.Errorf("parser is sealed, cannot add templates")
-	}
-
-	if len(tmpl) > p.maxTemplateLen {
-		return &ParseError{
-			Input:   tmpl,
-			Message: fmt.Sprintf("template too long: %d > %d", len(tmpl), p.maxTemplateLen),
-		}
-	}
-
-	if strings.TrimSpace(tmpl) == "" {
-		return &ParseError{Input: tmpl, Message: "empty template"}
-	}
-
-	src, fields, err := p.compileTemplate(tmpl)
-	if err != nil {
-		if p.metrics != nil {
-			p.metrics.RecordTemplateCompilation(tmpl, false)
-		}
-		return err
-	}
-
-	if len(src) > p.maxRegexLen {
-		if p.metrics != nil {
-			p.metrics.RecordTemplateCompilation(tmpl, false)
-		}
-		return &ParseError{
-			Input:   tmpl,
-			Message: fmt.Sprintf("generated regex too complex: %d > %d", len(src), p.maxRegexLen),
-		}
-	}
-
-	re, err := regexp.Compile("^" + src + "$")
-	if err != nil {
-		if p.metrics != nil {
-			p.metrics.RecordTemplateCompilation(tmpl, false)
-		}
-		return &ParseError{
-			Input:   tmpl,
-			Message: "failed to compile regex",
-			Err:     err,
-		}
-	}
-
-	// Test for catastrophic backtracking
-	if err := p.testRegexPerformance(re, tmpl); err != nil {
-		if p.metrics != nil {
-			p.metrics.RecordTemplateCompilation(tmpl, false)
-			p.metrics.RecordRegexTimeout(tmpl)
-		}
-		return err
-	}
-
-	p.compiled = append(p.compiled, &compiledTemplate{
-		template: tmpl,
-		re:       re,
-		fields:   fields,
-	})
-
-	if p.metrics != nil {
-		p.metrics.RecordTemplateCompilation(tmpl, true)
-	}
-
-	if p.logger != nil {
-		p.logger.Printf("Added template: %s (fields: %v)", tmpl, fields)
-	}
-
-	return nil
+// The compiled regex is anchored (^...$).
+func CompileFilenamePattern(pattern string) (*FilenameParser, error) {
+	return CompileFilenamePatternWithOptions(pattern, DefaultOptions())
 }
 
-// Seal prevents further template additions and optimizes for parsing.
-func (p *Parser) Seal() {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	p.sealed = true
-}
+// CompileFilenamePatternWithOptions compiles with custom options.
+func CompileFilenamePatternWithOptions(
+	pattern string,
+	opts CompileOptions,
+) (*FilenameParser, error) {
+	if strings.TrimSpace(pattern) == "" {
+		return nil, fmt.Errorf("%w: empty pattern", ErrInvalidPattern)
+	}
 
-// Parse attempts to parse the filename and returns a structured result.
-func (p *Parser) Parse(filename string) (*ParseResult, error) {
-	if err := p.validateInput(filename); err != nil {
+	parser := &FilenameParser{
+		pattern: pattern,
+	}
+
+	regexSrc, err := compileToRegex(pattern, opts, parser)
+	if err != nil {
 		return nil, err
 	}
 
-	fields, tmpl, ok := p.tryParseWithTimeout(filename)
-	if !ok {
-		return nil, &ParseError{
-			Input:   filename,
-			Message: "no template matched",
-		}
+	re, err := regexp.Compile(regexSrc)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"%w: regex compile failed: %v",
+			ErrInvalidPattern,
+			err,
+		)
 	}
 
-	return &ParseResult{
-		Fields:   fields,
-		Template: tmpl,
-		Raw:      filename,
-	}, nil
+	parser.re = re
+	return parser, nil
 }
 
-// TryParse attempts to parse the filename, returning nil map if no match.
-// This is the legacy API for backwards compatibility.
-func (p *Parser) TryParse(filename string) (map[string]string, string, bool) {
-	if err := p.validateInput(filename); err != nil {
-		return nil, "", false
-	}
-	return p.tryParseWithTimeout(filename)
-}
-
-// validateInput checks input constraints.
-func (p *Parser) validateInput(filename string) error {
-	if len(filename) > p.maxInputLen {
-		return &ParseError{
-			Input:   filename,
-			Message: fmt.Sprintf("input too long: %d > %d", len(filename), p.maxInputLen),
-		}
+// ParseFilename parses a filename using the compiled pattern.
+func (p *FilenameParser) ParseFilename(
+	filename string,
+) (ParseResult, error) {
+	filename = strings.TrimSpace(filename)
+	if filename == "" {
+		return ParseResult{}, ErrNoMatch
 	}
 
-	if strings.TrimSpace(filename) == "" {
-		return &ParseError{Input: filename, Message: "empty input"}
+	// Prevent multiline attacks
+	if strings.ContainsAny(filename, "\r\n") {
+		return ParseResult{}, fmt.Errorf(
+			"%w: filename contains newlines",
+			ErrNoMatch,
+		)
 	}
 
-	// Check for null bytes
-	if strings.ContainsRune(filename, 0) {
-		return &ParseError{Input: filename, Message: "input contains null byte"}
+	m := p.re.FindStringSubmatch(filename)
+	if m == nil {
+		return ParseResult{}, ErrNoMatch
 	}
 
-	return nil
-}
-
-// tryParseWithTimeout performs parsing with timeout protection.
-func (p *Parser) tryParseWithTimeout(filename string) (map[string]string, string, bool) {
-	type result struct {
-		fields map[string]string
-		tmpl   string
-		ok     bool
-	}
-
-	ch := make(chan result, 1)
-
-	go func() {
-		defer func() {
-			if r := recover(); r != nil {
-				if p.logger != nil {
-					p.logger.Printf("Panic during parse: %v", r)
-				}
-				ch <- result{nil, "", false}
-			}
-		}()
-
-		f, t, ok := p.doTryParse(filename)
-		ch <- result{f, t, ok}
-	}()
-
-	select {
-	case r := <-ch:
-		return r.fields, r.tmpl, r.ok
-	case <-time.After(p.parseTimeout):
-		if p.logger != nil {
-			p.logger.Printf("Parse timeout for: %s", filename)
-		}
-		return nil, "", false
-	}
-}
-
-// doTryParse performs the actual parsing logic.
-func (p *Parser) doTryParse(filename string) (map[string]string, string, bool) {
-	p.mu.RLock()
-	defer p.mu.RUnlock()
-
-	start := time.Now()
-
-	for _, ct := range p.compiled {
-		m := ct.re.FindStringSubmatch(filename)
-		if m == nil {
+	// Build capture group map
+	values := make(map[string]string, p.re.NumSubexp())
+	for i, name := range p.re.SubexpNames() {
+		if i == 0 || name == "" {
 			continue
 		}
-		out := make(map[string]string)
-		names := ct.re.SubexpNames()
-		for i := 1; i < len(names) && i < len(m); i++ {
-			name := names[i]
-			if name == "" {
-				continue
-			}
-			val := m[i]
-			if val == "" {
-				continue
-			}
-			if spec, ok := p.fieldSpecs[name]; ok && spec.Normalize != nil {
-				if norm, err := spec.Normalize(val); err == nil {
-					val = norm
-				}
-			}
-			out[name] = val
-		}
-		if p.metrics != nil {
-			p.metrics.RecordParseAttempt(ct.template, true, time.Since(start))
-		}
-		return out, ct.template, true
+		values[name] = m[i]
 	}
 
-	if p.metrics != nil {
-		p.metrics.RecordParseAttempt("", false, time.Since(start))
+	var result ParseResult
+	var warnings []string
+
+	// Parse platform
+	if v, ok := values["platform"]; ok && v != "" {
+		normalized := normalizePlatform(v)
+		if normalized == "" {
+			return ParseResult{}, fmt.Errorf(
+				"%w: %q",
+				ErrUnknownPlatform,
+				v,
+			)
+		}
+		result.Artifact.Platform = normalized
 	}
-	return nil, "", false
+
+	// Parse architecture
+	if v, ok := values["arch"]; ok && v != "" {
+		normalized := normalizeArch(v)
+		if normalized == "" {
+			return ParseResult{}, fmt.Errorf(
+				"%w: %q",
+				ErrUnknownArch,
+				v,
+			)
+		}
+		result.Artifact.Arch = normalized
+	}
+
+	// Parse format
+	if v, ok := values["format"]; ok && v != "" {
+		normalized := normalizeFormat(v)
+		if normalized == "" {
+			return ParseResult{}, fmt.Errorf(
+				"%w: %q",
+				ErrUnknownFormat,
+				v,
+			)
+		}
+		result.Artifact.Format = normalized
+	}
+
+	// Parse extension (no normalization needed)
+	if v, ok := values["ext"]; ok {
+		result.Artifact.Ext = strings.ToLower(v)
+	}
+
+	// Parse version (already validated by regex)
+	if v, ok := values["version"]; ok {
+		result.Artifact.Version = v
+	}
+
+	// Parse variant (already validated by regex)
+	if v, ok := values["variant"]; ok {
+		result.Artifact.Variant = v
+	}
+
+	result.Warnings = warnings
+	return result, nil
 }
 
-// testRegexPerformance tests the regex against pathological input.
-func (p *Parser) testRegexPerformance(re *regexp.Regexp, tmpl string) error {
-	// Test with repeated patterns that might trigger backtracking
-	testInputs := []string{
-		strings.Repeat("a", DefaultRegexTestLen),
-		strings.Repeat("a-", DefaultRegexTestLen/2),
-		strings.Repeat("1.", DefaultRegexTestLen/2),
+// ParseFilename is a convenience wrapper for one-off parsing.
+func ParseFilename(pattern, filename string) (ParseResult, error) {
+	p, err := CompileFilenamePattern(pattern)
+	if err != nil {
+		return ParseResult{}, err
 	}
-
-	done := make(chan bool, 1)
-
-	go func() {
-		for _, input := range testInputs {
-			re.MatchString(input)
-		}
-		done <- true
-	}()
-
-	select {
-	case <-done:
-		return nil
-	case <-time.After(p.regexTestTimeout):
-		return &ParseError{
-			Input:   tmpl,
-			Message: "regex performance test timed out - potential catastrophic backtracking",
-		}
-	}
+	return p.ParseFilename(filename)
 }
 
-// compileTemplate converts the reverse template into a regexp source.
-func (p *Parser) compileTemplate(tmpl string) (string, []string, error) {
+// ParseFilenamesFromLines parses filenames from line-separated input.
+// Lines may contain comma-separated values; only the first part is used.
+type LineParseResult struct {
+	Artifacts []Artifact
+	Errors    []LineError
+}
+
+type LineError struct {
+	Line     int
+	Filename string
+	Err      error
+}
+
+func (p *FilenameParser) ParseFilenamesFromLines(
+	input string,
+) LineParseResult {
+	var result LineParseResult
+
+	lines := strings.Split(input, "\n")
+	for lineNum, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+
+		// Extract filename before comma
+		filename := line
+		if idx := strings.IndexByte(line, ','); idx >= 0 {
+			filename = strings.TrimSpace(line[:idx])
+		}
+		if filename == "" {
+			continue
+		}
+
+		parseResult, err := p.ParseFilename(filename)
+		if err != nil {
+			result.Errors = append(result.Errors, LineError{
+				Line:     lineNum + 1,
+				Filename: filename,
+				Err:      err,
+			})
+			continue
+		}
+
+		result.Artifacts = append(result.Artifacts, parseResult.Artifact)
+	}
+
+	return result
+}
+
+// ParseFilenamesFromLines is a convenience wrapper.
+func ParseFilenamesFromLines(
+	pattern string,
+	input string,
+) (LineParseResult, error) {
+	p, err := CompileFilenamePattern(pattern)
+	if err != nil {
+		return LineParseResult{}, err
+	}
+	return p.ParseFilenamesFromLines(input), nil
+}
+
+// Pattern compiler
+
+func compileToRegex(
+	pattern string,
+	opts CompileOptions,
+	parser *FilenameParser,
+) (string, error) {
 	var b strings.Builder
-	fields := []string{}
-	i := 0
+	b.Grow(len(pattern) * 2) // Pre-allocate
+	b.WriteString("^")
 
-	for i < len(tmpl) {
-		ch := tmpl[i]
-		switch ch {
-		case '{':
-			// Escaped '{{'
-			if i+1 < len(tmpl) && tmpl[i+1] == '{' {
-				b.WriteString(regexp.QuoteMeta("{"))
-				i += 2
-				continue
-			}
+	for i := 0; i < len(pattern); {
+		// Find next control token: "{:" (tag) or "{?" (optional group)
+		nextTag := strings.Index(pattern[i:], "{:")
+		if nextTag >= 0 {
+			nextTag += i
+		}
+		nextGroup := strings.Index(pattern[i:], "{?")
+		if nextGroup >= 0 {
+			nextGroup += i
+		}
 
-			// Field: {name} or {name?}
-			closeIdx := strings.IndexByte(tmpl[i+1:], '}')
-			nextOpenIdx := strings.IndexByte(tmpl[i+1:], '{')
-			if closeIdx == -1 || nextOpenIdx > -1 && closeIdx > nextOpenIdx {
-				return "", nil, &ParseError{
-					Input:    tmpl,
-					Position: i,
-					Message:  fmt.Sprintf("unclosed '{' at %d", i),
-				}
-			}
-
-			raw := tmpl[i+1 : i+1+closeIdx]
-			name := strings.TrimSuffix(raw, "?")
-			optional := raw != name
-
-			if name == "" {
-				return "", nil, &ParseError{
-					Input:    tmpl,
-					Position: i,
-					Message:  "empty field name",
-				}
-			}
-
-			// Validate field name
-			if !isValidFieldName(name) {
-				return "", nil, &ParseError{
-					Input:    tmpl,
-					Position: i,
-					Message:  fmt.Sprintf("invalid field name: %s", name),
-				}
-			}
-
-			pat := p.defaultPattern
-			if spec, ok := p.fieldSpecs[name]; ok && strings.TrimSpace(spec.Pattern) != "" {
-				pat = spec.Pattern
-			}
-
-			if optional {
-				fmt.Fprintf(&b, "(?P<%s>%s)?", name, pat)
+		j := -1
+		switch {
+		case nextTag >= 0 && nextGroup >= 0:
+			if nextTag < nextGroup {
+				j = nextTag
 			} else {
-				fmt.Fprintf(&b, "(?P<%s>%s)", name, pat)
+				j = nextGroup
 			}
+		case nextTag >= 0:
+			j = nextTag
+		case nextGroup >= 0:
+			j = nextGroup
+		default:
+			// No more special tokens
+			b.WriteString(regexp.QuoteMeta(pattern[i:]))
+			i = len(pattern)
+			continue
+		}
 
-			fields = append(fields, name)
-			i = i + 1 + closeIdx + 1
+		// Emit literal segment
+		b.WriteString(regexp.QuoteMeta(pattern[i:j]))
 
-		case '}':
-			// Escaped '}}'
-			if i+1 < len(tmpl) && tmpl[i+1] == '}' {
-				b.WriteString(regexp.QuoteMeta("}"))
-				i += 2
-				continue
-			}
-
-			return "", nil, &ParseError{
-				Input:    tmpl,
-				Position: i,
-				Message:  "unmatched '}'",
-			}
-
-		case '[':
-			// Optional segment: [...]?
-			closeIdx := findMatchingBracket(tmpl, i+1)
-			if closeIdx == -1 {
-				return "", nil, &ParseError{
-					Input:    tmpl,
-					Position: i,
-					Message:  "unclosed '['",
-				}
-			}
-
-			seg := tmpl[i+1 : closeIdx]
-
-			// Check if followed by '?'
-			isOptional := closeIdx+1 < len(tmpl) && tmpl[closeIdx+1] == '?'
-
-			// Compile segment content
-			segSrc, segFields, err := p.compileSegment(seg)
+		if strings.HasPrefix(pattern[j:], "{?") {
+			// Optional group: "{? ... }"
+			end, err := findGroupEnd(pattern, j)
 			if err != nil {
-				return "", nil, fmt.Errorf("in segment at position %d: %w", i, err)
+				return "", err
 			}
 
-			fields = append(fields, segFields...)
-
-			if isOptional {
-				fmt.Fprintf(&b, "(?:%s)?", segSrc)
-				i = closeIdx + 2
-			} else {
-				fmt.Fprintf(&b, "(?:%s)", segSrc)
-				i = closeIdx + 1
+			inner := pattern[j+2 : end] // exclude "{?" and trailing "}"
+			innerRegex, err := compileToRegexInner(inner, opts, parser)
+			if err != nil {
+				return "", err
 			}
 
-		case ']':
-			return "", nil, &ParseError{
-				Input:    tmpl,
-				Position: i,
-				Message:  "unmatched ']'",
-			}
+			b.WriteString("(?:")
+			b.WriteString(innerRegex)
+			b.WriteString(")?")
+			i = end + 1
+			continue
+		}
 
-		default:
-			b.WriteString(regexp.QuoteMeta(string(ch)))
-			i++
+		// Regular tag: "{:...}"
+		end := strings.IndexByte(pattern[j:], '}')
+		if end < 0 {
+			return "", fmt.Errorf(
+				"%w: unclosed tag at position %d",
+				ErrInvalidPattern,
+				j,
+			)
+		}
+		end += j
+
+		tag := pattern[j : end+1]
+		frag, err := tagToRegex(tag, opts, parser)
+		if err != nil {
+			return "", err
+		}
+		b.WriteString(frag)
+		i = end + 1
+	}
+
+	b.WriteString("$")
+	return b.String(), nil
+}
+
+func tagToRegex(
+	tag string,
+	opts CompileOptions,
+	parser *FilenameParser,
+) (string, error) {
+	// Check for optional marker
+	optional := strings.HasSuffix(tag, "?}")
+	baseTag := tag
+	if optional {
+		baseTag = strings.TrimSuffix(tag, "?}") + "}"
+	}
+
+	var regex string
+	var err error
+
+	switch baseTag {
+	case "{:platform}":
+		parser.hasPlatform = true
+		regex = fmt.Sprintf(
+			"(?P<platform>%s)",
+			alternation(platformTokens(), opts.CaseSensitive),
+		)
+
+	case "{:arch}":
+		parser.hasArch = true
+		regex = fmt.Sprintf(
+			"(?P<arch>%s)",
+			alternation(archTokens(), opts.CaseSensitive),
+		)
+
+	case "{:format}":
+		parser.hasFormat = true
+		// Format is case-insensitive by nature of file extensions
+		regex = fmt.Sprintf(
+			"(?P<format>%s)",
+			alternation(formatTokens(), false),
+		)
+
+	case "{:ext}":
+		regex = `(?P<ext>[A-Za-z0-9]+)`
+
+	case "{:version}":
+		parser.hasVersion = true
+		// Improved version regex supporting CalVer and SemVer
+		regex = `(?P<version>v?[0-9]+(?:\.[0-9]+){0,3}` +
+			`(?:-[0-9A-Za-z]+(?:\.[0-9A-Za-z]+)*)?` +
+			`(?:\+[0-9A-Za-z]+(?:\.[0-9A-Za-z]+)*)?)`
+
+	default:
+		// Check for variant enum
+		if strings.HasPrefix(baseTag, "{:variant[") &&
+			strings.HasSuffix(baseTag, "]}") {
+			allowed, err := parseVariantAllowed(baseTag)
+			if err != nil {
+				return "", err
+			}
+			if len(allowed) == 0 {
+				return "", fmt.Errorf(
+					"%w: variant must have at least one value",
+					ErrInvalidPattern,
+				)
+			}
+			regex = fmt.Sprintf(
+				"(?P<variant>%s)",
+				alternation(allowed, true), // Variants are case-sensitive
+			)
+		} else {
+			return "", fmt.Errorf(
+				"%w: unsupported tag %q",
+				ErrInvalidPattern,
+				tag,
+			)
 		}
 	}
 
-	return b.String(), uniqueStrings(fields), nil
+	if optional {
+		regex = fmt.Sprintf("(?:%s)?", regex)
+	}
+
+	return regex, err
 }
 
-// compileSegment compiles a segment (content inside [...]).
-func (p *Parser) compileSegment(seg string) (string, []string, error) {
+func parseVariantAllowed(tag string) ([]string, error) {
+	// Extract content between [ and ]
+	inner := strings.TrimPrefix(tag, "{:variant[")
+	inner = strings.TrimSuffix(inner, "]}")
+	inner = strings.TrimSpace(inner)
+
+	if inner == "" {
+		return nil, fmt.Errorf(
+			"%w: variant list is empty",
+			ErrInvalidPattern,
+		)
+	}
+
+	var result []string
+	for len(inner) > 0 {
+		inner = strings.TrimSpace(inner)
+		if len(inner) == 0 {
+			break
+		}
+
+		if inner[0] != '`' {
+			return nil, fmt.Errorf(
+				"%w: variant values must be backtick-quoted",
+				ErrInvalidPattern,
+			)
+		}
+
+		val, rest, err := consumeQuoted(inner)
+		if err != nil {
+			return nil, err
+		}
+
+		result = append(result, val)
+
+		rest = strings.TrimSpace(rest)
+		if rest == "" {
+			break
+		}
+		if rest[0] != ',' {
+			return nil, fmt.Errorf(
+				"%w: expected comma between variant values",
+				ErrInvalidPattern,
+			)
+		}
+		inner = rest[1:]
+	}
+
+	return result, nil
+}
+
+func consumeQuoted(s string) (string, string, error) {
+	if s == "" || s[0] != '`' {
+		return "", "", fmt.Errorf(
+			"%w: expected backtick-quoted string",
+			ErrInvalidPattern,
+		)
+	}
+
 	var b strings.Builder
-	fields := []string{}
-	i := 0
+	escaped := false
 
-	for i < len(seg) {
-		ch := seg[i]
-		switch ch {
-		case '{':
-			if i+1 < len(seg) && seg[i+1] == '{' {
-				b.WriteString(regexp.QuoteMeta("{"))
-				i += 2
-				continue
+	for i := 1; i < len(s); i++ {
+		c := s[i]
+		if escaped {
+			switch c {
+			case '`', '\\':
+				b.WriteByte(c)
+			default:
+				// Unknown escape - keep the backslash
+				b.WriteByte('\\')
+				b.WriteByte(c)
 			}
-
-			closeIdx := strings.IndexByte(seg[i+1:], '}')
-			if closeIdx == -1 {
-				return "", nil, fmt.Errorf("unclosed '{' in segment")
-			}
-
-			raw := seg[i+1 : i+1+closeIdx]
-			name := strings.TrimSuffix(raw, "?")
-			optional := raw != name
-
-			if name == "" {
-				return "", nil, fmt.Errorf("empty field name in segment")
-			}
-
-			if !isValidFieldName(name) {
-				return "", nil, fmt.Errorf("invalid field name in segment: %s", name)
-			}
-
-			pat := p.defaultPattern
-			if spec, ok := p.fieldSpecs[name]; ok && strings.TrimSpace(spec.Pattern) != "" {
-				pat = spec.Pattern
-			}
-
-			if optional {
-				fmt.Fprintf(&b, "(?P<%s>%s)?", name, pat)
-			} else {
-				fmt.Fprintf(&b, "(?P<%s>%s)", name, pat)
-			}
-
-			fields = append(fields, name)
-			i = i + 1 + closeIdx + 1
-
-		case '}':
-			if i+1 < len(seg) && seg[i+1] == '}' {
-				b.WriteString(regexp.QuoteMeta("}"))
-				i += 2
-				continue
-			}
-			return "", nil, fmt.Errorf("unmatched '}' in segment")
-
-		case '[':
-			return "", nil, fmt.Errorf("nested optional segments not supported")
-
-		default:
-			b.WriteString(regexp.QuoteMeta(string(ch)))
-			i++
+			escaped = false
+			continue
 		}
+
+		if c == '\\' {
+			escaped = true
+			continue
+		}
+
+		if c == '`' {
+			return b.String(), s[i+1:], nil
+		}
+
+		b.WriteByte(c)
 	}
 
-	return b.String(), fields, nil
+	return "", "", fmt.Errorf(
+		"%w: unterminated backtick-quoted string",
+		ErrInvalidPattern,
+	)
 }
 
-// isValidFieldName checks if a field name is valid.
-func isValidFieldName(name string) bool {
-	if name == "" {
-		return false
-	}
+// Dictionaries & normalization
 
-	// Must start with letter or underscore
-	first := rune(name[0])
-	if !((first >= 'a' && first <= 'z') || (first >= 'A' && first <= 'Z') || first == '_') {
-		return false
+func platformTokens() []string {
+	return []string{
+		"darwin", "macos", "mac", "osx", "apple-darwin",
+		"linux",
+		"windows", "win", "win32", "win64",
 	}
-
-	// Rest can be alphanumeric or underscore
-	for _, r := range name[1:] {
-		if !((r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_') {
-			return false
-		}
-	}
-
-	return true
 }
 
-// findMatchingBracket finds the index of the matching ']' for a '['.
-func findMatchingBracket(tmpl string, start int) int {
-	depth := 1
-	for i := start; i < len(tmpl); i++ {
-		switch tmpl[i] {
-		case '[':
-			depth++
-		case ']':
-			depth--
-			if depth == 0 {
-				return i
+func normalizePlatform(v string) string {
+	s := strings.ToLower(strings.TrimSpace(v))
+	switch s {
+	case "darwin", "macos", "mac", "osx", "apple-darwin":
+		return "darwin"
+	case "linux":
+		return "linux"
+	case "windows", "win", "win32", "win64":
+		return "windows"
+	default:
+		return ""
+	}
+}
+
+func archTokens() []string {
+	return []string{
+		"arm64", "aarch64",
+		"amd64", "x86_64", "x64",
+		"386", "i386", "x86",
+		"armv7", "armv6",
+	}
+}
+
+func normalizeArch(v string) string {
+	s := strings.ToLower(strings.TrimSpace(v))
+	switch s {
+	case "arm64", "aarch64":
+		return "arm64"
+	case "amd64", "x86_64", "x64":
+		return "amd64"
+	case "386", "i386", "x86":
+		return "386"
+	case "armv7":
+		return "armv7"
+	case "armv6":
+		return "armv6"
+	default:
+		return ""
+	}
+}
+
+func formatTokens() []string {
+	return []string{
+		"tar.gz", "tar.zst", "tar.xz", "tar.bz2",
+		"tgz", "zip", "gz", "zst", "xz", "bz2",
+	}
+}
+
+func normalizeFormat(v string) string {
+	s := strings.ToLower(strings.TrimSpace(v))
+	// Only accept known formats
+	for _, token := range formatTokens() {
+		if s == token {
+			return s
+		}
+	}
+	return ""
+}
+
+func alternation(tokens []string, caseSensitive bool) string {
+	// Sort by length descending for greedy matching
+	sorted := make([]string, len(tokens))
+	copy(sorted, tokens)
+	sort.Slice(sorted, func(i, j int) bool {
+		if len(sorted[i]) == len(sorted[j]) {
+			return sorted[i] < sorted[j]
+		}
+		return len(sorted[i]) > len(sorted[j])
+	})
+
+	// Escape tokens
+	escaped := make([]string, 0, len(sorted))
+	for _, token := range sorted {
+		escaped = append(escaped, regexp.QuoteMeta(token))
+	}
+
+	joined := strings.Join(escaped, "|")
+
+	if caseSensitive {
+		return joined
+	}
+	return "(?i:" + joined + ")"
+}
+
+// compileToRegexInner compiles a pattern fragment without ^ and $ anchors.
+func compileToRegexInner(
+	pattern string,
+	opts CompileOptions,
+	parser *FilenameParser,
+) (string, error) {
+	// Reuse compileToRegex, then strip anchors. This keeps behavior consistent.
+	src, err := compileToRegex(pattern, opts, parser)
+	if err != nil {
+		return "", err
+	}
+	// compileToRegex always returns ^...$, so strip them.
+	if strings.HasPrefix(src, "^") {
+		src = strings.TrimPrefix(src, "^")
+	}
+	if strings.HasSuffix(src, "$") {
+		src = strings.TrimSuffix(src, "$")
+	}
+	return src, nil
+}
+
+func findGroupEnd(pattern string, start int) (int, error) {
+	// start points at '{' and pattern[start:start+2] == "{?"
+	// Groups cannot be nested (keeps parsing simple and predictable).
+	for i := start + 2; i < len(pattern); i++ {
+		// Reject nested optional groups.
+		if pattern[i] == '{' && strings.HasPrefix(pattern[i:], "{?") {
+			return 0, fmt.Errorf(
+				"%w: nested optional groups are not supported at position %d",
+				ErrInvalidPattern,
+				i,
+			)
+		}
+
+		// Skip over normal tags "{:...}" so their '}' doesn't close the group.
+		if pattern[i] == '{' && strings.HasPrefix(pattern[i:], "{:") {
+			end := strings.IndexByte(pattern[i:], '}')
+			if end < 0 {
+				return 0, fmt.Errorf(
+					"%w: unclosed tag at position %d",
+					ErrInvalidPattern,
+					i,
+				)
 			}
+			i += end // jump to the tag's closing '}'
+			continue
 		}
-	}
-	return -1
-}
 
-// uniqueStrings returns unique strings preserving order.
-func uniqueStrings(ss []string) []string {
-	seen := make(map[string]struct{}, len(ss))
-	out := make([]string, 0, len(ss))
-	for _, s := range ss {
-		if _, ok := seen[s]; !ok {
-			seen[s] = struct{}{}
-			out = append(out, s)
+		// First '}' that isn't part of a "{:...}" tag closes the optional group.
+		if pattern[i] == '}' {
+			return i, nil
 		}
 	}
-	return out
+
+	return 0, fmt.Errorf(
+		"%w: unclosed optional group at position %d",
+		ErrInvalidPattern,
+		start,
+	)
 }

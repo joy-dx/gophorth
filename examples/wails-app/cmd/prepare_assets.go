@@ -64,9 +64,8 @@ func main() {
 		WithOutputPath("./assets").
 		WithPrivateKeyPath("./embedded/private-pgp.key").
 		WithTargetPath("./assets").
-		WithFilePattern("wails-app-{platform}-{arch}{variant}").
-		WithDownloadPrefix("http://localhost:8080/").
-		WithAllowAnyExtension(true)
+		WithFilePattern("wails-app-{:platform}-{:arch}{?-{:variant[`webkit241`]}}{?.{:format}}").
+		WithDownloadPrefix("http://localhost:8080/")
 
 	releaserSvc := releaser.ProvideReleaserSvc(&cfg.Releaser)
 	if err := releaserSvc.Hydrate(ctx); err != nil {
