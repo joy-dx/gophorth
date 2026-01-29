@@ -49,8 +49,8 @@ releaserCfg.WithRelay(relaySvc).
     WithPrivateKeyPath("~/secrets/private-pgp.key").
 	// Path to directory where published artefacts are located
     WithTargetPath("./assets").
-	// Specify file name pattern for files to process and way to extract information
-    WithFilePattern("app-example-{platform}-{arch}").
+	// Specify file name pattern for files to process and way to extract information.
+    WithFilePattern("app-example-{:platform}-{:arch}").
 	// If you already know where URL artefacts will be hosted
     WithDownloadPrefix("http://localhost:8080/")
 
@@ -185,3 +185,50 @@ if updaterSvc.Status() == updaterdto.COMPLETE {
     }
 }
 ```
+
+## File Pattern schema
+
+The File pattern offers a simple regex like way of extracting relevant information from file names
+
+### Basic Tags
+
+| Tag               | Description      | Example Match        | Normalized Output               |
+|-------------------|------------------|----------------------|---------------------------------|
+| `{:version}`      | Semantic version | v1.2.3, 2.0.0-rc.1   | As-is                           |
+| `{:platform}`     | Operating system | darwin, macOS, linux | darwin, linux, windows          |
+| `{:arch}`         | CPU architecture | arm64, aarch64, x64  | arm64, amd64, 386, armv7, armv6 |
+| `{:format}`       | Archive format   | tar.gz, zip          | As-is (lowercase)               |
+| `{:ext}`          | File extension   | gz, zip              | Lowercase                       |
+| `{:variant[...]}` | Enum values      | See below            | As-is                           |
+
+### Optional Fields
+
+Add ? to make any field optional:
+
+
+	// Matches both "tool-1.2.3-linux" and "tool-linux"
+	pattern := `tool-{:version?}-{:platform}`
+
+### Variant Enums
+
+Restrict values to a specific set:
+
+	pattern := "jq-{:platform}-{:variant[`static`,`dynamic`]}"
+	
+	// Matches: jq-linux-static
+	// Matches: jq-darwin-dynamic
+	// Rejects: jq-linux-shared
+
+
+### Optional Groups (optional separators)
+
+Sometimes you need to make a separator plus a field optional (e.g. optional
+`-variant` or optional `.zip`). Use `{? ... }` to make a whole fragment optional.
+
+Example (matches all of these):
+- joydx-darwin-amd64
+- joydx-darwin-amd64.zip
+- joydx-darwin-amd64-webkit241
+- joydx-darwin-amd64-webkit241.zip
+
+pattern := "joydx-{:platform}-{:arch}{?-{:variant[`webkit241`]}}{?.{:format}}"

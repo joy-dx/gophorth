@@ -1,17 +1,15 @@
 package releaser
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"path"
 	"path/filepath"
-	"regexp"
 	"strings"
 
 	"github.com/joy-dx/gophorth/pkg/cryptography"
+	"github.com/joy-dx/gophorth/pkg/file/parser"
 	"github.com/joy-dx/gophorth/pkg/releaser/releaserdto"
-	"github.com/joy-dx/gophorth/pkg/stringz"
 )
 
 // ScanDir reads a directory (non-recursive) and returns ReleasesFound entries
@@ -29,176 +27,76 @@ import (
 //   - {version} is optional by default and, when present, includes its leading dash
 //     (e.g. "-1.2.3"). Set RequireVersion=true to make it required.
 func (s *ReleaserSvc) ScanDir() ([]releaserdto.ReleaseAsset, error) {
-
-	re, err := stringz.CompileReverseTemplate(stringz.ReverseTemplateOptions{
-		Pattern:           s.cfg.FilePattern,
-		AllowAnyExtension: s.cfg.AllowAnyExtension,
-		RequireVersion:    s.cfg.RequireVersion,
-	})
+	s.relay.Debug(RlyReleaserLog{Msg: fmt.Sprintf("using pattern: %s", s.cfg.FilePattern)})
+	compiledParser, err := parser.CompileFilenamePattern(s.cfg.FilePattern)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("scan dir. failed to compile pattern. %s. %w", s.cfg.FilePattern, err)
 	}
 
 	s.relay.Info(RlyReleaserLog{Msg: fmt.Sprintf("starting scan: %s", s.cfg.TargetPath)})
 	targetPath := os.ExpandEnv(s.cfg.TargetPath)
-	entries, err := os.ReadDir(targetPath)
+	dirListing, err := os.ReadDir(targetPath)
 	if err != nil {
 		return nil, fmt.Errorf("read dir %q: %w", s.cfg.TargetPath, err)
 	}
 
-	out := make([]releaserdto.ReleaseAsset, 0, len(entries))
-	for _, e := range entries {
-		if e.IsDir() {
+	out := make([]releaserdto.ReleaseAsset, 0, len(dirListing))
+	s.relay.Debug(RlyReleaserLog{Msg: fmt.Sprintf("found %d possible assets", len(dirListing))})
+	for _, dirEntry := range dirListing {
+		if dirEntry.IsDir() {
+			s.relay.Debug(RlyReleaserLog{Msg: fmt.Sprintf("skipping dir: %s", dirEntry.Name())})
 			continue
 		}
-
-		name := e.Name()
 
 		// Skip signature files that may be present
-		if strings.HasSuffix(name, ".asc") || strings.HasSuffix(name, ".asc.sig") {
+		if strings.HasSuffix(dirEntry.Name(), ".asc") || strings.HasSuffix(dirEntry.Name(), ".sig") {
+			s.relay.Debug(RlyReleaserLog{Msg: fmt.Sprintf("skipping signature: %s", dirEntry.Name())})
 			continue
 		}
 
-		matches := re.FindStringSubmatch(name)
-		if matches == nil {
-			if s.cfg.Strict {
-				return nil, fmt.Errorf("file %q does not match pattern %q", name, s.cfg.FilePattern)
-			}
+		fileMeta, parseErr := compiledParser.ParseFilename(dirEntry.Name())
+		if parseErr != nil {
+			s.relay.Warn(RlyReleaserLog{Msg: fmt.Sprintf("failed to parse filename: %s. %s", dirEntry.Name(), parseErr.Error())})
 			continue
 		}
 
-		info, err := e.Info()
-		if err != nil {
-			return nil, fmt.Errorf("stat %q: %w", name, err)
-		}
+		fullPath := filepath.Join(s.cfg.TargetPath, dirEntry.Name())
 
-		groupNames := re.SubexpNames()
-		g := make(map[string]string, len(groupNames))
-		for i, n := range groupNames {
-			if i == 0 || n == "" {
-				continue
-			}
-			g[n] = matches[i]
+		statInfo, statErr := os.Stat(fullPath)
+		if statErr != nil {
+			s.relay.Warn(RlyReleaserLog{Msg: fmt.Sprintf("failed to stat: %s. %s", dirEntry.Name(), statErr.Error())})
+			continue
 		}
-
-		fullPath := filepath.Join(s.cfg.TargetPath, name)
 
 		checksum, checksumErr := cryptography.Sha256SumFile(fullPath)
 		if checksumErr != nil {
-			return nil, fmt.Errorf("checksum file %q: %w", fullPath, checksumErr)
+			s.relay.Warn(RlyReleaserLog{Msg: fmt.Sprintf("failed to generate checksum: %s. %s", dirEntry.Name(), checksumErr.Error())})
+			continue
 		}
 
 		s.checksumBuilder.WriteString(fmt.Sprintf("%s  %s\n", checksum, path.Base(fullPath)))
 		var version string
-		if s.version != nil {
-			version = s.version.String()
-		}
-		foundVersion := trimLeadingDash(g["version"])
-		if foundVersion != "" {
-			version = foundVersion
+
+		if fileMeta.Artifact.Version != "" {
+			s.relay.Debug(RlyReleaserLog{Msg: fmt.Sprintf("found version: %s", fileMeta.Artifact.Version)})
+			version = fileMeta.Artifact.Version
+		} else {
+			if s.version != nil {
+				s.relay.Debug(RlyReleaserLog{Msg: fmt.Sprintf("using version from service: %s", s.version.String())})
+				version = s.version.String()
+			}
 		}
 
-		variant := strings.TrimLeft(g["variant"], "/-_")
 		out = append(out, releaserdto.ReleaseAsset{
 			ArtefactName: filepath.Base(fullPath),
-			Platform:     g["platform"],
-			Arch:         g["arch"],
-			Variant:      variant,
+			Platform:     fileMeta.Artifact.Platform,
+			Arch:         fileMeta.Artifact.Arch,
+			Variant:      fileMeta.Artifact.Variant,
 			Version:      version,
-			SizeBytes:    info.Size(),
+			SizeBytes:    statInfo.Size(),
 			Checksum:     checksum,
 		})
 	}
 	s.releaseAssets = out
 	return out, nil
-}
-
-func trimLeadingDash(s string) string {
-	if strings.HasPrefix(s, "-") {
-		return s[1:]
-	}
-	return s
-}
-
-// compileReverseTemplate turns a template string into a regex with named groups.
-// Supported placeholders: {platform}, {arch}, {variant}, {version}.
-//   - {variant} is optional and includes its leading "-" when present
-//     (e.g. "-webkit241"). Captured as "-webkit241" and later kept as-is.
-//   - {version} includes its leading "-" when present (e.g. "-1.2.3").
-//     If RequireVersion is false, it's optional; if true, it's required.
-//
-// Example template: "test-app-{platform}-{arch}{variant}{version}"
-func (s *ReleaserSvc) compileReverseTemplate() (*regexp.Regexp, error) {
-	if strings.TrimSpace(s.cfg.FilePattern) == "" {
-		return nil, errors.New("pattern must not be empty")
-	}
-
-	var versionRule string
-	if s.cfg.RequireVersion {
-		versionRule = `-[0-9]+(?:\.[0-9A-Za-z]+)*(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?`
-	} else {
-		versionRule = `(?:-[0-9]+(?:\.[0-9A-Za-z]+)*(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?)?`
-	}
-
-	rules := map[string]string{
-		"platform": `[a-z0-9]+`,
-		"arch":     `[A-Za-z0-9_]+`,
-		"variant":  `(?:-[A-Za-z0-9._]+)?`,
-		"version":  versionRule,
-	}
-
-	var b strings.Builder
-	b.WriteString("^")
-
-	for i := 0; i < len(s.cfg.FilePattern); {
-		if s.cfg.FilePattern[i] != '{' {
-			j := strings.IndexByte(s.cfg.FilePattern[i:], '{')
-			if j == -1 {
-				j = len(s.cfg.FilePattern)
-			} else {
-				j = i + j
-			}
-			b.WriteString(regexp.QuoteMeta(s.cfg.FilePattern[i:j]))
-			i = j
-			continue
-		}
-
-		end := strings.IndexByte(s.cfg.FilePattern[i:], '}')
-		if end == -1 {
-			return nil, fmt.Errorf("unclosed placeholder starting at index %d", i)
-		}
-		end = i + end
-
-		name := s.cfg.FilePattern[i+1 : end]
-		if name == "" {
-			return nil, fmt.Errorf("empty placeholder at index %d", i)
-		}
-
-		rule, ok := rules[name]
-		if !ok {
-			return nil, fmt.Errorf("unknown placeholder {%s}", name)
-		}
-
-		b.WriteString("(?P<")
-		b.WriteString(name)
-		b.WriteString(">")
-		b.WriteString(rule)
-		b.WriteString(")")
-
-		i = end + 1
-	}
-
-	if s.cfg.AllowAnyExtension {
-		// Allow ".zip", ".tar.gz", etc. after the pattern.
-		// .asc/.asc.sig are filtered by caller since Go regex lacks lookarounds.
-		b.WriteString(`(?:\.[A-Za-z0-9]+(?:\.[A-Za-z0-9]+)*)?`)
-	}
-
-	b.WriteString("$")
-
-	re, err := regexp.Compile(b.String())
-	if err != nil {
-		return nil, fmt.Errorf("compile regex from pattern %q: %w", s.cfg.FilePattern, err)
-	}
-	return re, nil
 }

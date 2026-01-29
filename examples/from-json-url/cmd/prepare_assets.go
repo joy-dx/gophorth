@@ -31,7 +31,7 @@ var (
 				WithOutputPath("./cmd/assets").
 				WithPrivateKeyPath("./cmd/embedded/private-pgp.key").
 				WithTargetPath("./cmd/assets").
-				WithFilePattern("app-example-{platform}-{arch}").
+				WithFilePattern("app-example-{:platform}-{:arch}").
 				WithDownloadPrefix("http://localhost:8080/")
 			releaserSvc := releaser.ProvideReleaserSvc(&cfgSvc.Releaser)
 			if err := releaserSvc.Hydrate(ctx); err != nil {
