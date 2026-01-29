@@ -37,14 +37,21 @@ export namespace releaserdto {
 export namespace updaterdto {
 	
 	export interface UpdaterState {
-	    updater_last_time_checked_update?: string;
-	    updater_update_link?: releaserdto.ReleaseAsset;
+	    updater_architecture: string;
 	    updater_changelog: string;
-	    updater_released_at?: string;
 	    updater_check_interval: number;
+	    updater_last_update_check?: string;
 	    updater_log: string;
 	    updater_log_path: string;
+	    updater_platform: string;
+	    updater_public_key: string;
+	    updater_public_key_path: string;
+	    updater_released_at?: string;
+	    updater_status: string;
+	    updater_temporary_path: string;
+	    updater_update_link?: releaserdto.ReleaseAsset;
 	    updater_updating: boolean;
+	    updater_variant: string;
 	    updater_version: string;
 	}
 

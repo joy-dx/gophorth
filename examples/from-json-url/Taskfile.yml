@@ -1,0 +1,40 @@
+version: "3"
+
+tasks:
+  default:
+    desc: Show available commands
+    cmds:
+      - task --list
+
+  generate:
+    desc: Build artefacts for the demonstration
+    cmds:
+      - echo "--- Generating example artefacts ---"
+
+      - echo "Building v1 native in current folder"
+      - go build -ldflags="-s -w -X github.com/joy-dx/gophorth/examples/from-json-url/cmd.BuildID=1.0.0" -trimpath -o ./app-example .
+
+      - echo "Building v2 darwin builds for update test"
+      - task: build
+        vars: { GOOS: darwin, GOARCH: amd64, VERSION: "2.0.0", OUT: ./cmd/assets/app-example-darwin-amd64 }
+      - task: build
+        vars: { GOOS: darwin, GOARCH: arm64, VERSION: "2.0.0", OUT: ./cmd/assets/app-example-darwin-arm64 }
+
+      - echo "Building v2 linux builds for update test"
+      - task: build
+        vars: { GOOS: linux, GOARCH: amd64, VERSION: "2.0.0", OUT: ./cmd/assets/app-example-linux-amd64 }
+      - task: build
+        vars: { GOOS: linux, GOARCH: arm64, VERSION: "2.0.0", OUT: ./cmd/assets/app-example-linux-arm64 }
+
+      - echo "Generate release information (checksums, signatures, and version.json)"
+      - ./app-example prepare-assets --version 2.0.0
+
+  build:
+    internal: true
+    requires:
+      vars: [GOOS, GOARCH, VERSION, OUT]
+    env:
+      GOOS: "{{.GOOS}}"
+      GOARCH: "{{.GOARCH}}"
+    cmds:
+      - go build -ldflags="-s -w -X github.com/joy-dx/gophorth/examples/from-json-url/cmd.BuildID={{.VERSION}}" -trimpath -o "{{.OUT}}" .
