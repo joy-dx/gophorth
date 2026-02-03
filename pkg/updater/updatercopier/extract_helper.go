@@ -15,7 +15,7 @@ func ExtractHelper(extractPath string) (string, error) {
 	case "darwin":
 		helperNameBuilder.WriteString("assets/update-helper-darwin")
 	case "windows":
-		helperNameBuilder.WriteString("assets/update-helper-windows.exe")
+		helperNameBuilder.WriteString("assets/update-helper-windows")
 	default:
 		helperNameBuilder.WriteString("assets/update-helper-linux")
 	}
@@ -27,12 +27,16 @@ func ExtractHelper(extractPath string) (string, error) {
 		helperNameBuilder.WriteString("-arm64")
 	}
 
+	if runtime.GOOS == "windows" {
+		helperNameBuilder.WriteString(".exe")
+	}
+
 	data, err := embeddedHelpers.ReadFile(helperNameBuilder.String())
 	if err != nil {
 		return "", fmt.Errorf("failed to read embedded helper: %w", err)
 	}
 
-	tmpPath := filepath.Join(extractPath, "/gophorth-helper")
+	tmpPath := filepath.Join(extractPath, "/", filepath.Base(helperNameBuilder.String()))
 
 	if err := os.WriteFile(tmpPath, data, 0755); err != nil {
 		return "", fmt.Errorf("failed to write helper: %w", err)
