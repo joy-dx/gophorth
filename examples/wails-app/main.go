@@ -88,6 +88,7 @@ func main() {
 	// CHECK CLIENT - net type to download meta information from an endpoint
 	netClientCfg := updaterclients.DefaultFromNetConfig()
 	netClientCfg.WithUserFetchFunction(func(ctx context.Context, cfg updaterclients.NetAgentCfg) (releaserdto.ReleaseAsset, error) {
+		cfg.Relay.Debug(updater.RlyUpdaterLog{Msg: fmt.Sprintf("going to start checking for new version. %s:%s:%s", cfg.UpdaterCfg.Platform, cfg.UpdaterCfg.Architecture, cfg.UpdaterCfg.Variant)})
 
 		var releaseSummary releaserdto.ReleaseSummary
 		var releaseAsset releaserdto.ReleaseAsset
@@ -123,7 +124,8 @@ func main() {
 	prepareFunc := func(ctx context.Context, cfg *updaterdto.UpdaterAgentCfg) error {
 		// On mac we distribute the app as an archive
 		// unpack and update the artefact path
-		if runtime.GOOS == "darwin" {
+		switch runtime.GOOS {
+		case "darwin":
 			extractOptions := archive.DefaultExtractOptions()
 			err := archive.Extract(ctx, cfg.VersionUpdate.ArtefactName, cfg.UpdaterCfg.TemporaryPath, extractOptions)
 			if err != nil {
@@ -133,9 +135,17 @@ func main() {
 			// Update the artefact path
 			cfg.VersionUpdate.WithArtefactName(cfg.UpdaterCfg.TemporaryPath + "/wails-app.app")
 			return nil
-		}
+		case "windows":
+			extractOptions := archive.DefaultExtractOptions()
+			err := archive.Extract(ctx, cfg.VersionUpdate.ArtefactName, cfg.UpdaterCfg.TemporaryPath, extractOptions)
+			if err != nil {
+				return err
+			}
 
-		log.Println("running custom update function")
+			// Update the artefact path
+			cfg.VersionUpdate.WithArtefactName(cfg.UpdaterCfg.TemporaryPath + "/wails-app.exe")
+			return nil
+		}
 		return nil
 	}
 
