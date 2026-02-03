@@ -6,13 +6,18 @@ tasks:
     cmds:
       - task --list
 
-  generate:
-    desc: Build artefacts for the demonstration
+  gen:
+    desc: Generate all artefacts necessary for the demonstration
+    deps:
+      - v2_build
+    cmds:
+      - echo "Generating all demo artefacts for {{OS}}/{{ARCH}}"
+      - task: prepare_runtime
+  
+  v2_build:
+    desc: Build v2 artefacts for the demonstration
     cmds:
       - echo "--- Generating example artefacts ---"
-
-      - echo "Building v1 native in current folder"
-      - go build -ldflags="-s -w -X github.com/joy-dx/gophorth/examples/from-json-url/cmd.BuildID=1.0.0" -trimpath -o ./app-example .
 
       - echo "Building v2 darwin builds for update test"
       - task: build
@@ -25,9 +30,38 @@ tasks:
         vars: { GOOS: linux, GOARCH: amd64, VERSION: "2.0.0", OUT: ./cmd/assets/app-example-linux-amd64 }
       - task: build
         vars: { GOOS: linux, GOARCH: arm64, VERSION: "2.0.0", OUT: ./cmd/assets/app-example-linux-arm64 }
-
+      
+      - echo "Building v2 windows builds for update test"
+      - task: build
+        vars: { GOOS: windows, GOARCH: amd64, VERSION: "2.0.0", OUT: ./cmd/assets/app-example-windows-amd64.exe }
+      - task: build
+        vars: { GOOS: windows, GOARCH: arm64, VERSION: "2.0.0", OUT: ./cmd/assets/app-example-windows-arm64.exe }
+  
+  prepare_runtime:
+    desc: Build V1 native artefact for running
+    deps:
+      - prepare_runtime_posix
+      - prepare_runtime_windows
+      
+  prepare_runtime_posix:
+    internal: true
+    platforms: [darwin, linux]
+    cmds:
+      - echo "Building v1 native in current folder"
+      - task: build
+        vars: { GOOS: "{{OS}}", GOARCH: "{{ARCH}}", VERSION: "1.0.0", OUT: "./app-example-{{OS}}-{{ARCH}}" }
       - echo "Generate release information (checksums, signatures, and version.json)"
-      - ./app-example prepare-assets --version 2.0.0
+      - "./app-example-{{OS}}-{{ARCH}} prepare-assets --version 2.0.0"
+
+  prepare_runtime_windows:
+    internal: true
+    platforms: [ windows ]
+    cmds:
+      - echo "Building v1 native in current folder"
+      - task: build
+        vars: { GOOS: "{{OS}}", GOARCH: "{{ARCH}}", VERSION: "1.0.0", OUT: "./app-example-{{OS}}-{{ARCH}}.exe" }
+      - echo "Generate release information (checksums, signatures, and version.json)"
+      - "./app-example-{{OS}}-{{ARCH}}.exe prepare-assets --version 2.0.0"
 
   build:
     internal: true
