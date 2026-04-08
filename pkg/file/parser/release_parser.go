@@ -594,6 +594,7 @@ func formatTokens() []string {
 	return []string{
 		"tar.gz", "tar.zst", "tar.xz", "tar.bz2",
 		"tgz", "zip", "gz", "zst", "xz", "bz2",
+		"exe",
 	}
 }
 
