@@ -1,6 +1,6 @@
 package main
 
-import "github.com/joy-dx/gophorth/examples/from-json-url/cmd"
+import "github.com/joy-dx/gophorth/_examples/from-github-release/cmd"
 
 func main() {
 	// Send program handling to viper

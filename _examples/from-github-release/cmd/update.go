@@ -2,25 +2,23 @@ package cmd
 
 import (
 	"context"
-	"encoding/json"
-	"errors"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"syscall"
 	"time"
 
-	"github.com/Masterminds/semver/v3"
+	"github.com/joy-dx/gophorth/_examples/from-github-release/config"
+	"github.com/joy-dx/relay"
+
+	"github.com/google/go-github/v81/github"
 	"github.com/joy-dx/gonetic"
-	"github.com/joy-dx/gophorth/examples/from-json-url/config"
-	"github.com/joy-dx/gophorth/examples/utils"
-	"github.com/joy-dx/gophorth/pkg/releaser/releaserdto"
 	"github.com/joy-dx/gophorth/pkg/updater"
 	"github.com/joy-dx/gophorth/pkg/updater/updaterclients"
 	"github.com/joy-dx/gophorth/pkg/updater/updaterdto"
-	"github.com/joy-dx/relay"
 	"github.com/spf13/cobra"
 )
 
@@ -33,52 +31,34 @@ var (
 			relaySvc := relay.ProvideRelaySvc(nil)
 			netSvc := gonetic.ProvideNetSvc(nil)
 
-			relaySvc.Info(updater.RlyUpdaterLog{Msg: "Starting updater"})
+			relaySvc.Info(updater.RlyUpdaterLog{Msg: "Starting updater: From-Github-Release"})
 			// Root context cancelled on SIGINT/SIGTERM
 			ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 			defer stop()
 
-			// Serve the assets path update checking
-			go func() {
-				if err := utils.ServeDir(ctx, "localhost:8080", "./cmd/assets"); err != nil {
-					log.Fatal(err)
-				}
-			}()
+			// Create an HTTP client with the custom timeout
+			httpClient := &http.Client{
+				Timeout: 20 * time.Second,
+			}
+			githubAgent := github.NewClient(httpClient)
 
-			// CHECK CLIENT - net type to download meta information from an endpoint
-			netClientCfg := updaterclients.DefaultFromNetConfig()
-			netClientCfg.WithUserFetchFunction(func(ctx context.Context, cfg updaterclients.NetAgentCfg) (releaserdto.ReleaseAsset, error) {
+			// Getting the signature is simply a matter of suffixing .asc to the URL
+			getSignatureFunction := func(ctx context.Context, cfg *updaterclients.GithubAgentCfg) (string, error) {
+				signatureURL := cfg.VersionLink.DownloadURL + ".asc"
 
-				var releaseSummary releaserdto.ReleaseSummary
-				var releaseAsset releaserdto.ReleaseAsset
-				url := "http://localhost:8080/version.json"
-				if response, err := cfg.NetSvc.Get(ctx, url, true); err != nil {
-					return releaseAsset, err
-				} else {
-					if unmarshalErr := json.Unmarshal(response.Body, &releaseSummary); unmarshalErr != nil {
-						return releaseAsset, unmarshalErr
-					}
+				response, err := cfg.NetSvc.Get(ctx, signatureURL, true)
+				if err != nil {
+					return "", err
 				}
+				return string(response.Body), nil
+			}
 
-				remoteVersionSemVer, remoteVersionErr := semver.NewVersion(releaseSummary.Version)
-				if remoteVersionErr != nil {
-					cfg.Relay.Warn(updater.RlyUpdaterLog{Msg: fmt.Sprintf("Couldn't parse remote version: %s. %s", releaseSummary.Version, remoteVersionErr.Error())})
-					return releaseAsset, fmt.Errorf("couldn't parse remote version: %w", remoteVersionErr)
-				}
-				cfg.Relay.Debug(updater.RlyUpdaterLog{Msg: fmt.Sprintf("Remote version found: %s", remoteVersionSemVer.String())})
-				for _, asset := range releaseSummary.Assets {
-					if asset.Platform == cfg.UpdaterCfg.Platform && asset.Arch == cfg.UpdaterCfg.Architecture {
-						cfg.Relay.Debug(updater.RlyUpdaterLog{Msg: fmt.Sprintf("found asset with matching platform: %s %s", asset.Platform, asset.Arch)})
-						if cfg.UpdaterCfg.Variant == asset.Variant {
-							cfg.Relay.Debug(updater.RlyUpdaterLog{Msg: fmt.Sprintf("found wanted variant %s", asset.Variant)})
-							return asset, nil
-						}
-					}
-
-				}
-				return releaseAsset, errors.New("couldn't find remote version")
-			})
-			netClient := updaterclients.NewFromNet(&netClientCfg)
+			githubClientCfg := updaterclients.DefaultFromGithubConfig()
+			githubClientCfg.WithOwner("joy-dx").
+				WithRepo("app-update-example").
+				WithClient(githubAgent).
+				WithGetSignatureFunc(getSignatureFunction)
+			githubClient := updaterclients.NewFromGithub(&githubClientCfg)
 
 			// Update Client
 			logPath, logPathErr := filepath.Abs("./update.log")
@@ -87,7 +67,7 @@ var (
 			}
 			cfgSvc.Updater.WithRelay(relaySvc).
 				WithNetSvc(netSvc).
-				WithCheckClient(netClient).
+				WithCheckClient(githubClient).
 				WithTemporaryPath("/tmp/update-test").
 				WithVersion(BuildID).
 				WithPublicKeyPath("./cmd/embedded/public-pgp.key").
