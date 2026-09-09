@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/joy-dx/gophorth/examples/from-github-release/config"
+	"github.com/joy-dx/gophorth/_examples/from-github-release/config"
 	"github.com/joy-dx/gophorth/pkg/updater"
 	"github.com/joy-dx/relay"
 	"github.com/spf13/cobra"

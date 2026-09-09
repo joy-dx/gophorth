@@ -30,7 +30,7 @@ make generate
 
 ### Preparing your artefacts
 
-GoPhorth comes with a Releaser service to help prepare meta information about your published artefacts. You can see an [example file here](examples/version-information.json)
+GoPhorth comes with a Releaser service to help prepare meta information about your published artefacts. You can see an [example file here](_examples/version-information.json)
 
 ```go
 // Internal messaging system to extend log capabilities

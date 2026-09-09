@@ -8,13 +8,11 @@ import (
 	"os"
 
 	"github.com/joy-dx/gonetic"
-	netCfg "github.com/joy-dx/gonetic/config"
-	"github.com/joy-dx/gophorth/examples/from-github-release/config"
-	"github.com/joy-dx/gophorth/examples/from-github-release/config/cliflags"
+	"github.com/joy-dx/gophorth/_examples/from-json-url/config"
+	"github.com/joy-dx/gophorth/_examples/from-json-url/config/cliflags"
 	"github.com/joy-dx/gophorth/pkg/config/builder"
 	"github.com/joy-dx/gophorth/pkg/config/options"
 	"github.com/joy-dx/gophorth/pkg/releaser/releaserconfig"
-	"github.com/joy-dx/gophorth/pkg/releaser/releaserdto"
 	"github.com/joy-dx/gophorth/pkg/updater/updaterdto"
 	"github.com/joy-dx/relay"
 	relayCfg "github.com/joy-dx/relay/config"
@@ -34,10 +32,6 @@ var (
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			cmd.SetContext(cancelContext)
 			cfg := config.ProvideConfigSvc()
-			cfg.Updater = updaterdto.DefaultUpdaterSvcConfig()
-			cfg.Net = netCfg.DefaultNetSvcConfig()
-			cfg.Relay = relayCfg.DefaultRelaySvcConfig()
-			cfg.Releaser = releaserdto.DefaultReleaserConfig()
 			if stateErr := cfg.Process(); stateErr != nil {
 				log.Fatal(stateErr)
 			}
@@ -48,10 +42,11 @@ var (
 			consoleSink := sinks.NewSimpleLogger(&consoleCfg)
 
 			// Relay - Internal Channel based event bus
-			relaySvc := relay.ProvideRelaySvc(&cfg.Relay)
+			relayCfg := relayCfg.DefaultRelaySvcConfig()
+			relaySvc := relay.ProvideRelaySvc(&relayCfg)
 			// Register a common screen out sink from the main logger service
 			relaySvc.RegisterSink(consoleSink)
-			for _, relaySink := range cfg.Relay.Sinks {
+			for _, relaySink := range relayCfg.Sinks {
 				relaySvc.RegisterSink(relaySink)
 			}
 			if err := relaySvc.Hydrate(); err != nil {

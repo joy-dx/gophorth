@@ -5,7 +5,7 @@ import (
 	"log"
 
 	"github.com/joy-dx/gonetic"
-	"github.com/joy-dx/gophorth/examples/from-json-url/config"
+	"github.com/joy-dx/gophorth/_examples/from-json-url/config"
 	"github.com/joy-dx/gophorth/pkg/config/builder"
 	"github.com/joy-dx/gophorth/pkg/config/options"
 	"github.com/joy-dx/gophorth/pkg/releaser"
