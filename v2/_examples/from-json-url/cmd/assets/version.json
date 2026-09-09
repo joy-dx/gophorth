@@ -1,0 +1,55 @@
+{
+  "assets": [
+    {
+      "artefact_name": "app-example-darwin-amd64",
+      "platform": "darwin",
+      "arch": "amd64",
+      "variant": "",
+      "version": "2.0.0",
+      "download_url": "http://localhost:8080/app-example-darwin-amd64",
+      "checksum": "e0f305e3033f74846c11f130af24eed50eb6ab68b2d24a383b2df2218712cedc",
+      "size_bytes": 12037488,
+      "signature": "-----BEGIN PGP SIGNATURE-----\n\nwsCpBAABCABdBYJpeyrCCRCePGmjoy65UzUUAAAAAAAcABBzYWx0QG5vdGF0aW9u\ncy5vcGVucGdwanMub3JnhoDp1SbtzwCrJgtTV5BMexYhBBnMrlGUGTM1nHS3+J48\naaOjLrlTAABOfAf5AcwiDVLHItWsdRPFuGviTf99TVFU7mT2uoy7V8dh35eFFe9y\nVe/8qH+Hta752xbTUtB8svdoPsxQm+r7L+56VO2RDMKNL5Z5x1xkL8DjecD2yv/z\n4HADiww1SAVvHvcu37LY8er+gMxKiTBqLLERT0UsQl/LBMAwiXd6HLhBxyGOVSag\nm2stKAHV3hDC3aUIZJ3/xbtiTKxHpT26nx1pEBLX8SYxx67qx07iZ3R4r1FT2FoY\neYTFyWTx4iD/8ubuiBwF9EJPjWdW9K5Tjnj3BhkxZnTX+BTl2OtLHSa2p1dNVqv6\nAi5/XCn1tO7dVkuMxy/VsFh05tGTtreKgdMGtw==\n=H7yg\n-----END PGP SIGNATURE-----",
+      "signature_type": "PGP"
+    },
+    {
+      "artefact_name": "app-example-darwin-arm64",
+      "platform": "darwin",
+      "arch": "arm64",
+      "variant": "",
+      "version": "2.0.0",
+      "download_url": "http://localhost:8080/app-example-darwin-arm64",
+      "checksum": "4338c059287e6378e050af05cdf1efc362d5c5258e252cf638a7916b6220bd0f",
+      "size_bytes": 11293490,
+      "signature": "-----BEGIN PGP SIGNATURE-----\n\nwsCpBAABCABdBYJpeyrCCRCePGmjoy65UzUUAAAAAAAcABBzYWx0QG5vdGF0aW9u\ncy5vcGVucGdwanMub3Jn1fxXH3Sdx9xCOsfI4ETSThYhBBnMrlGUGTM1nHS3+J48\naaOjLrlTAAC/tQf/YKidZeILNjrXqIfDe3o6g60LBOwMTNYC1QECbQ9fJqvxyW7o\n4GgwxXcIegb874wHoV+vJ8oCkrIFhtUf3SsOEepzmm56Sf7wk8ctR1vTokJY6805\nMM4eNS4VwuRmRYkZpIJtB7oL/f6YODzZJMpRjK2irsTY9D+gP3g7sUXisSPueJzs\nCPdvGE3+VwPn40l19OtrhLgd0PJdBnrCSCmT9eWlP3Qzfr0xDweFHnz2C3a5AR35\nhTI7rmhmLsbPmopRsEB2sQb57NTLJYToBFDhRxuD4CkUugRWJTXbNo11vo0uMdV6\ntIb4RXMKbVSZxfp8cxY7IbxpIgUjbh13vQzgFQ==\n=BzYX\n-----END PGP SIGNATURE-----",
+      "signature_type": "PGP"
+    },
+    {
+      "artefact_name": "app-example-linux-amd64",
+      "platform": "linux",
+      "arch": "amd64",
+      "variant": "",
+      "version": "2.0.0",
+      "download_url": "http://localhost:8080/app-example-linux-amd64",
+      "checksum": "6b6a8b38ddbcde5462f6d389fbb6e89f5bab707ec19e420e131cbe1ffa0b6596",
+      "size_bytes": 11837624,
+      "signature": "-----BEGIN PGP SIGNATURE-----\n\nwsCpBAABCABdBYJpeyrCCRCePGmjoy65UzUUAAAAAAAcABBzYWx0QG5vdGF0aW9u\ncy5vcGVucGdwanMub3Jn9kf3PtKm96yERch/iF+b9hYhBBnMrlGUGTM1nHS3+J48\naaOjLrlTAAB/Ggf+IJEYBUBP33Zxv8Z+3/Il7mhMkE01aNov8qD/iK4Wow2y7wiK\nYGsLwUTuMGSYoM/1CzGshZVRaoENWfwk/33xpTZoGLxbP01ioRPEfUKEosfpjWze\nCgGJTvV8gkhSzWG9F9gn70G48G8UIVdcITHujp77KI8lG/7JVAGA2tK+W9yzHv3f\nCUotPZKnwCUnsn+XRWDMRRRbn5jFHAoQBPXfyqmjHspD7elQzFF9DUcHMTNsN0bQ\n4mJiyI4IO9pr2J8pxZVAQVjzQtsiyjSHEm2xihv+NXlge0How5iTRf8AD2uMiQ0V\nN2JSVuGCFshkG4SZAz6dJB3OvoLhcOsl5hKTRA==\n=RWS8\n-----END PGP SIGNATURE-----",
+      "signature_type": "PGP"
+    },
+    {
+      "artefact_name": "app-example-linux-arm64",
+      "platform": "linux",
+      "arch": "arm64",
+      "variant": "",
+      "version": "2.0.0",
+      "download_url": "http://localhost:8080/app-example-linux-arm64",
+      "checksum": "b891ed815dc3b05c2a110a475639e5701009a574a1bd8c6c343829e8e2a048f9",
+      "size_bytes": 11141304,
+      "signature": "-----BEGIN PGP SIGNATURE-----\n\nwsCpBAABCABdBYJpeyrCCRCePGmjoy65UzUUAAAAAAAcABBzYWx0QG5vdGF0aW9u\ncy5vcGVucGdwanMub3Jnxl9hhTK3iQctQG2WDFQf3RYhBBnMrlGUGTM1nHS3+J48\naaOjLrlTAACuTgf/Wq54IMN74ot2hQv3klIDjHnpcnjdqW1cLcCwgYK0GAXQNtkF\nvdOiup5sju1V9p4oG2x5ZO4Q2MYzD/uSApJh/9WVeMKz9+6Kixw7/CcgssCdtB1x\nu2diLvkkhjEZA6T5fZw5JTSj2aZsHlMV96Pd6bB6fkYeN1B0RCfO9xqGMeQbJtBs\nSClLo4zqizFMsmICdoF2u/SxorD3SPzttgn06IJNuuiQGP4wJ2OnksVcyIiqi8f3\n7MXOC+xDvApYx3z91iCFVGonIZd9rq5FfJkZaFrnddf0wv9TPCYEnMzOGV72gQmB\n8IEEWtBrjRz726CGEpFHz9ICbCZ2bRD4UG15/g==\n=B9Jn\n-----END PGP SIGNATURE-----",
+      "signature_type": "PGP"
+    }
+  ],
+  "published_at": "2026-01-29T17:39:14.633804+08:00",
+  "release_url": "",
+  "version": "2.0.0"
+}

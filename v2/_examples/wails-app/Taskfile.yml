@@ -1,0 +1,216 @@
+version: "3"
+vars:
+  ARCH: '{{default ARCH .arch}}'
+  PLATFORM: '{{default OS .platform}}'
+  WEBKIT241: '{{default "false" .webkit241}}'
+tasks:
+  default:
+    desc: Show available commands
+    cmds:
+      - task --list
+
+  gen:
+    desc: Generate all artefacts necessary for the demonstration
+    cmds:
+      - echo "Generating all demo artefacts for {{OS}}/{{ARCH}}"
+      - task: v2_build
+      - task: prepare_runtime
+
+  v2_build:
+    desc: Build v2 artefacts for the demonstration (host-dependent)
+    cmds:
+      - task: v2_build_darwin
+      - task: v2_build_linux_amd64
+      - task: v2_build_linux_arm64
+      - task: v2_build_windows_amd64
+      - task: v2_build_windows_arm64
+
+
+  prepare_runtime:
+    desc: Build v1 native artefact for running + generate release info
+    deps:
+      - prepare_runtime_darwin
+      - prepare_runtime_linux_amd64
+      - prepare_runtime_linux_arm64
+      - prepare_runtime_windows_amd64
+      - prepare_runtime_windows_arm64
+
+  # --- v2 build tasks (produce assets for update testing) ---
+
+  v2_build_darwin:
+    internal: true
+    platforms: [ darwin ]
+    cmds:
+      - echo "--- Generating example artefacts ---"
+      - echo "Building v2 darwin builds for update test"
+      - task: wails:build:tar:darwin
+        vars: { GOARCH: amd64, VERSION: "2.0.0" }
+      - task: wails:build:tar:darwin
+        vars: { GOARCH: arm64, VERSION: "2.0.0" }
+
+  v2_build_linux_amd64:
+    internal: true
+    platforms: [ linux ]
+    cmds:
+      - echo "--- Generating example artefacts ---"
+      - echo "Building v2 linux amd64 build for update test"
+      - task: wails:build:bin:linux
+        vars: { GOARCH: amd64, VERSION: "2.0.0" }
+
+  v2_build_linux_arm64:
+    internal: true
+    platforms: [ linux ]
+    cmds:
+      - echo "--- Generating example artefacts ---"
+      - echo "Building v2 linux arm64 build for update test"
+      - task: wails:build:bin:linux
+        vars: { GOARCH: arm64, VERSION: "2.0.0" }
+
+  v2_build_windows_amd64:
+    internal: true
+    platforms: [ windows ]
+    cmds:
+      - echo "Building v2 windows amd64 build for update test"
+      - task: wails:build:zip:windows
+        vars: { GOARCH: amd64, VERSION: "2.0.0" }
+
+  v2_build_windows_arm64:
+    internal: true
+    platforms: [ windows ]
+    cmds:
+      - echo "Building v2 windows arm64 build for update test"
+      - task: wails:build:zip:windows
+        vars: { GOARCH: arm64, VERSION: "2.0.0" }
+
+  # --- v1 runtime tasks (native build in current folder) ---
+
+  prepare_runtime_darwin:
+    internal: true
+    platforms: [ darwin ]
+    cmds:
+      - echo "Building v1 native in current folder"
+      - task: wails:build:native:darwin
+        vars: { VERSION: "1.0.0" }
+      - echo "Generate release information (checksums, signatures, and version.json)"
+      - go run cmd/prepare_assets.go 2.0.0
+
+  prepare_runtime_linux_amd64:
+    internal: true
+    platforms: [ linux ]
+    status:
+      - '[ "$(uname -m)" = "x86_64" ] || [ "$(uname -m)" = "amd64" ]'
+    cmds:
+      - echo "Building v1 native in current folder"
+      - task: wails:build:native:linux
+        vars: { VERSION: "1.0.0", VARIANT: "webkit241" }
+      - echo "Generate release information (checksums, signatures, and version.json)"
+      - go run cmd/prepare_assets.go 2.0.0
+
+  prepare_runtime_linux_arm64:
+    internal: true
+    platforms: [ linux ]
+    status:
+      - '[ "$(uname -m)" = "aarch64" ] || [ "$(uname -m)" = "arm64" ]'
+    cmds:
+      - echo "Building v1 native in current folder"
+      - task: wails:build:native:linux
+        vars: { VERSION: "1.0.0", VARIANT: "webkit241" }
+      - echo "Generate release information (checksums, signatures, and version.json)"
+      - go run cmd/prepare_assets.go 2.0.0
+
+  prepare_runtime_windows_amd64:
+    status:
+      - '[ "{{.ARCH}}" != "amd64" ]'
+    internal: true
+    platforms: [ windows ]
+    cmds:
+      - echo "Building v1 native in current folder"
+      - task: wails:build:native:windows
+        vars: { VERSION: "1.0.0" }
+      - echo "Generate release information (checksums, signatures, and version.json)"
+      - go run cmd/prepare_assets.go 2.0.0
+
+  prepare_runtime_windows_arm64:
+    status:
+      - '[ "{{.ARCH}}" != "arm64" ]'
+    internal: true
+    platforms: [ windows ]
+    cmds:
+      - echo "Building v1 native in current folder"
+      - task: wails:build:native:windows
+        vars: { VERSION: "1.0.0" }
+      - echo "Generate release information (checksums, signatures, and version.json)"
+      - go run cmd/prepare_assets.go 2.0.0
+
+  # --- internal build primitives (like your `build` task) ---
+
+  wails:build:native:darwin:
+    internal: true
+    requires:
+      vars: [ VERSION ]
+    env:
+      GOOS: darwin
+    cmds:
+      - wails build -ldflags="-s -w -X main.BuildID={{.VERSION}}"
+      - rm -rf ./wails-app.app
+      - mv ./build/bin/wails-app.app ./wails-app.app
+
+  wails:build:native:linux:
+    internal: true
+    requires:
+      vars: [ VERSION ]
+    env:
+      GOOS: linux
+    cmds:
+      - wails build -ldflags="-s -w -X main.BuildID={{.VERSION}} --tags "webkit2_41"
+      - rm -rf ./wails-app
+      - mv ./build/bin/wails-app ./wails-app
+
+  wails:build:native:windows:
+    internal: true
+    requires:
+      vars: [ VERSION ]
+    env:
+      GOOS: windows
+    cmds:
+      - wails build -ldflags="-s -w -X main.BuildID={{.VERSION}}"
+      - pwsh -NoProfile -Command "if (Test-Path .\\wails-app.exe) { Remove-Item -Force .\\wails-app.exe }"
+      - pwsh -NoProfile -Command "Move-Item -Force .\\build\\bin\\wails-app.exe .\\wails-app.exe"
+
+  wails:build:bin:linux:
+    internal: true
+    requires:
+      vars: [ GOARCH, VERSION ]
+    env:
+      GOOS: linux
+      GOARCH: "{{.GOARCH}}"
+    cmds:
+      - wails build -ldflags="-s -w -X main.BuildID={{.VERSION}} -X main.Variant=webkit241" --tags "webkit2_41"
+      - mv ./build/bin/wails-app ./assets/wails-app-linux-{{.GOARCH}}-{{.VARIANT}}
+
+  wails:build:tar:darwin:
+    internal: true
+    requires:
+      vars: [ GOARCH, VERSION ]
+    env:
+      GOOS: darwin
+      GOARCH: "{{.GOARCH}}"
+    cmds:
+      - wails build -ldflags="-s -w -X main.BuildID={{.VERSION}}"
+      - tar -cpzf "./wails-app-darwin-{{.GOARCH}}.tar.gz" -C ./build/bin wails-app.app
+      - mv "./wails-app-darwin-{{.GOARCH}}.tar.gz" "./assets/wails-app-darwin-{{.GOARCH}}.tar.gz"
+      - rm -rf ./build/bin
+
+  wails:build:zip:windows:
+    internal: true
+    requires:
+      vars: [ GOARCH, VERSION ]
+    env:
+      GOOS: windows
+      GOARCH: "{{.GOARCH}}"
+    cmds:
+      - wails build -ldflags="-s -w -X main.BuildID={{.VERSION}}"
+      - pwsh -NoProfile -Command "New-Item -ItemType Directory -Force .\\assets | Out-Null"
+      - pwsh -NoProfile -Command "if (Test-Path .\\assets\\wails-app-windows-{{.GOARCH}}.zip) { Remove-Item -Force .\\assets\\wails-app-windows-{{.GOARCH}}.zip }"
+      - pwsh -NoProfile -Command "Compress-Archive -Path .\\build\\bin\\wails-app.exe -DestinationPath .\\assets\\wails-app-windows-{{.GOARCH}}.zip -Force"
+      - pwsh -NoProfile -Command "Remove-Item -Recurse -Force .\\build\\bin -ErrorAction SilentlyContinue"

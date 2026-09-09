@@ -1,0 +1,30 @@
+version: "3"
+
+tasks:
+  generate:
+    desc: Generate update helper binaries for multiple OS/ARCH targets
+    cmds:
+      - echo "--- Generating update helper ---"
+      - task: build-update-helper
+        vars: { GOOS: darwin, GOARCH: amd64, OUT: ../assets/update-helper-darwin-amd64 }
+      - task: build-update-helper
+        vars: { GOOS: darwin, GOARCH: arm64, OUT: ../assets/update-helper-darwin-arm64 }
+      - task: build-update-helper
+        vars: { GOOS: linux, GOARCH: amd64, OUT: ../assets/update-helper-linux-amd64 }
+      - task: build-update-helper
+        vars: { GOOS: linux, GOARCH: arm64, OUT: ../assets/update-helper-linux-arm64 }
+      - task: build-update-helper
+        vars: { GOOS: windows, GOARCH: amd64, OUT: ../assets/update-helper-windows-amd64.exe }
+      - task: build-update-helper
+        vars: { GOOS: windows, GOARCH: arm64, OUT: ../assets/update-helper-windows-arm64.exe }
+
+  build-update-helper:
+    internal: true
+    dir: ./pkg/updater/updatercopier/cmd
+    vars:
+      LDFLAGS: "-s -w"
+    cmds:
+      - go build -ldflags '{{.LDFLAGS}}' -trimpath -o '{{.OUT}}' .
+    env:
+      GOOS: "{{.GOOS}}"
+      GOARCH: "{{.GOARCH}}"
