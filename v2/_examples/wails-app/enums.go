@@ -2,8 +2,8 @@ package main
 
 import (
 	netRelays "github.com/joy-dx/gonetic/v2/relays"
-	"github.com/joy-dx/gophorth/pkg/releaser"
-	"github.com/joy-dx/gophorth/pkg/updater"
+	"github.com/joy-dx/gophorth/v2/pkg/releaser"
+	"github.com/joy-dx/gophorth/v2/pkg/updater"
 	"github.com/joy-dx/relay/v2/dto"
 	"github.com/joy-dx/relay/v2/events"
 )

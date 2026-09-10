@@ -7,7 +7,6 @@ require (
 	github.com/Masterminds/semver v1.5.0
 	github.com/Masterminds/semver/v3 v3.4.0
 	github.com/ProtonMail/go-crypto v1.3.0
-	github.com/go-viper/mapstructure/v2 v2.4.0
 	github.com/google/go-github/v81 v81.0.0
 	github.com/joy-dx/gonetic v1.0.3
 	github.com/joy-dx/relay v1.1.0
@@ -21,15 +20,10 @@ require (
 
 require (
 	github.com/cloudflare/circl v1.6.2 // indirect
-	github.com/fatih/color v1.18.0 // indirect
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
+	github.com/go-viper/mapstructure/v2 v2.4.0 // indirect
 	github.com/google/go-querystring v1.2.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
-	github.com/joy-dx/gonetic/v2 v2.0.4 // indirect
-	github.com/joy-dx/lockablemap v1.1.0 // indirect
-	github.com/joy-dx/relay/v2 v2.0.2 // indirect
-	github.com/mattn/go-colorable v0.1.14 // indirect
-	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
 	github.com/rogpeppe/go-internal v1.12.0 // indirect
 	github.com/sagikazarmark/locafero v0.12.0 // indirect
@@ -38,7 +32,6 @@ require (
 	github.com/subosito/gotenv v1.6.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/crypto v0.46.0 // indirect
-	golang.org/x/oauth2 v0.37.0 // indirect
 	golang.org/x/text v0.32.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 )

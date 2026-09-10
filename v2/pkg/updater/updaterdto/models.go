@@ -4,7 +4,7 @@ import (
 	"time"
 
 	netDTO "github.com/joy-dx/gonetic/v2/dto"
-	"github.com/joy-dx/gophorth/pkg/releaser/releaserdto"
+	"github.com/joy-dx/gophorth/v2/pkg/releaser/releaserdto"
 )
 
 type UpdaterState struct {

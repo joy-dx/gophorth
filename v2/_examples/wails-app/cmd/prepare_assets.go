@@ -8,9 +8,9 @@ import (
 	"wails-app/config"
 
 	netCfg "github.com/joy-dx/gonetic/v2/config"
-	"github.com/joy-dx/gophorth/pkg/releaser"
-	"github.com/joy-dx/gophorth/pkg/releaser/releaserdto"
-	"github.com/joy-dx/gophorth/pkg/updater/updaterdto"
+	"github.com/joy-dx/gophorth/v2/pkg/releaser"
+	"github.com/joy-dx/gophorth/v2/pkg/releaser/releaserdto"
+	"github.com/joy-dx/gophorth/v2/pkg/updater/updaterdto"
 	relayCfg "github.com/joy-dx/relay/v2/config"
 	"github.com/joy-dx/relay/v2/dto"
 	"github.com/joy-dx/relay/v2/sinks"

@@ -15,10 +15,10 @@ import (
 	"github.com/Masterminds/semver/v3"
 	"github.com/ProtonMail/go-crypto/openpgp"
 	netDTO "github.com/joy-dx/gonetic/v2/dto"
-	"github.com/joy-dx/gophorth/pkg/cryptography"
-	"github.com/joy-dx/gophorth/pkg/releaser/releaserdto"
-	"github.com/joy-dx/gophorth/pkg/updater/updatercopier"
-	"github.com/joy-dx/gophorth/pkg/updater/updaterdto"
+	"github.com/joy-dx/gophorth/v2/pkg/cryptography"
+	"github.com/joy-dx/gophorth/v2/pkg/releaser/releaserdto"
+	"github.com/joy-dx/gophorth/v2/pkg/updater/updatercopier"
+	"github.com/joy-dx/gophorth/v2/pkg/updater/updaterdto"
 	"github.com/joy-dx/relay/v2/dto"
 )
 

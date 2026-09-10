@@ -16,7 +16,9 @@ func (v *VerificationChecksum) GetRef() string {
 	return v.Ref
 }
 
-func (v *VerificationChecksum) SetConfig() string {}
+func (v *VerificationChecksum) SetConfig() string {
+	return ""
+}
 
 func (v *VerificationChecksum) Verify(artefactPath string) error {
 	return nil

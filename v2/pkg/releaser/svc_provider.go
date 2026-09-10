@@ -3,7 +3,7 @@ package releaser
 import (
 	"sync"
 
-	"github.com/joy-dx/gophorth/pkg/releaser/releaserdto"
+	"github.com/joy-dx/gophorth/v2/pkg/releaser/releaserdto"
 )
 
 var (

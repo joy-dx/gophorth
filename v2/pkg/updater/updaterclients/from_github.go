@@ -8,13 +8,13 @@ import (
 	"strings"
 
 	"github.com/google/go-github/v81/github"
-	"github.com/joy-dx/gophorth/pkg/cryptography"
-	"github.com/joy-dx/gophorth/pkg/file"
-	"github.com/joy-dx/gophorth/pkg/hydrate"
-	"github.com/joy-dx/gophorth/pkg/releaser/releaserdto"
-	"github.com/joy-dx/gophorth/pkg/stringz"
-	"github.com/joy-dx/gophorth/pkg/updater"
-	"github.com/joy-dx/gophorth/pkg/updater/updaterdto"
+	"github.com/joy-dx/gophorth/v2/pkg/cryptography"
+	"github.com/joy-dx/gophorth/v2/pkg/file"
+	"github.com/joy-dx/gophorth/v2/pkg/hydrate"
+	"github.com/joy-dx/gophorth/v2/pkg/releaser/releaserdto"
+	"github.com/joy-dx/gophorth/v2/pkg/stringz"
+	"github.com/joy-dx/gophorth/v2/pkg/updater"
+	"github.com/joy-dx/gophorth/v2/pkg/updater/updaterdto"
 )
 
 const UpdateClientFromGithubRef = "from_net"

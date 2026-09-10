@@ -7,9 +7,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/joy-dx/gophorth/pkg/cryptography"
-	"github.com/joy-dx/gophorth/pkg/file/parser"
-	"github.com/joy-dx/gophorth/pkg/releaser/releaserdto"
+	"github.com/joy-dx/gophorth/v2/pkg/cryptography"
+	"github.com/joy-dx/gophorth/v2/pkg/file/parser"
+	"github.com/joy-dx/gophorth/v2/pkg/releaser/releaserdto"
 )
 
 // ScanDir reads a directory (non-recursive) and returns ReleasesFound entries

@@ -11,9 +11,9 @@ import (
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/ProtonMail/go-crypto/openpgp"
-	"github.com/joy-dx/gophorth/pkg/cryptography"
-	"github.com/joy-dx/gophorth/pkg/file"
-	"github.com/joy-dx/gophorth/pkg/releaser/releaserdto"
+	"github.com/joy-dx/gophorth/v2/pkg/cryptography"
+	"github.com/joy-dx/gophorth/v2/pkg/file"
+	"github.com/joy-dx/gophorth/v2/pkg/releaser/releaserdto"
 	"github.com/joy-dx/relay/v2/dto"
 )
 

@@ -1,8 +1,8 @@
 package releaserconfig
 
 import (
-	"github.com/joy-dx/gophorth/pkg/config/builder"
-	"github.com/joy-dx/gophorth/pkg/config/options"
+	"github.com/joy-dx/gophorth/v2/pkg/config/builder"
+	"github.com/joy-dx/gophorth/v2/pkg/config/options"
 	"github.com/spf13/cobra"
 )
 

@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/joy-dx/gophorth/pkg/config/options"
+	"github.com/joy-dx/gophorth/v2/pkg/config/options"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )

@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/joy-dx/gophorth/pkg/releaser/releaserdto"
-	"github.com/joy-dx/gophorth/pkg/updater/updaterdto"
+	"github.com/joy-dx/gophorth/v2/pkg/releaser/releaserdto"
+	"github.com/joy-dx/gophorth/v2/pkg/updater/updaterdto"
 	"github.com/joy-dx/relay/v2/dto"
 )
 

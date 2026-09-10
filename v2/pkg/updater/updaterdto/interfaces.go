@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/Masterminds/semver"
-	"github.com/joy-dx/gophorth/pkg/releaser/releaserdto"
+	"github.com/joy-dx/gophorth/v2/pkg/releaser/releaserdto"
 )
 
 type UpdaterInterface interface {

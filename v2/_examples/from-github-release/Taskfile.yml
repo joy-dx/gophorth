@@ -11,4 +11,4 @@ tasks:
     cmds:
       - echo "--- Generating example artefacts ---"
       - echo "Building v1 native in current folder"
-      - go build -ldflags="-s -w -X github.com/joy-dx/gophorth/examples/from-github-release/cmd.BuildID=1.0.0" -trimpath -o ./app-example .
+      - go build -ldflags="-s -w -X github.com/joy-dx/gophorth/v2/v2/examples/from-github-release/cmd.BuildID=1.0.0" -trimpath -o ./app-example .

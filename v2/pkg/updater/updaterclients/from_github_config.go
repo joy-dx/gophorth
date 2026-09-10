@@ -5,8 +5,8 @@ import (
 
 	"github.com/google/go-github/v81/github"
 	netDTO "github.com/joy-dx/gonetic/v2/dto"
-	"github.com/joy-dx/gophorth/pkg/releaser/releaserdto"
-	"github.com/joy-dx/gophorth/pkg/updater/updaterdto"
+	"github.com/joy-dx/gophorth/v2/pkg/releaser/releaserdto"
+	"github.com/joy-dx/gophorth/v2/pkg/updater/updaterdto"
 )
 
 type SelectAssetFuncType func(ctx context.Context, cfg *GithubAgentCfg) (*github.ReleaseAsset, string /*variant*/, error)

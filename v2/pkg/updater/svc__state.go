@@ -9,11 +9,11 @@ import (
 	"time"
 
 	"github.com/Masterminds/semver/v3"
-	"github.com/joy-dx/gophorth/pkg/cryptography"
-	"github.com/joy-dx/gophorth/pkg/file"
-	"github.com/joy-dx/gophorth/pkg/hydrate"
-	"github.com/joy-dx/gophorth/pkg/releaser/releaserdto"
-	"github.com/joy-dx/gophorth/pkg/updater/updaterdto"
+	"github.com/joy-dx/gophorth/v2/pkg/cryptography"
+	"github.com/joy-dx/gophorth/v2/pkg/file"
+	"github.com/joy-dx/gophorth/v2/pkg/hydrate"
+	"github.com/joy-dx/gophorth/v2/pkg/releaser/releaserdto"
+	"github.com/joy-dx/gophorth/v2/pkg/updater/updaterdto"
 )
 
 func (s *UpdaterSvc) UpdateLink() *releaserdto.ReleaseAsset {

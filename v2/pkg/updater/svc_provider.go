@@ -3,7 +3,7 @@ package updater
 import (
 	"sync"
 
-	"github.com/joy-dx/gophorth/pkg/updater/updaterdto"
+	"github.com/joy-dx/gophorth/v2/pkg/updater/updaterdto"
 )
 
 var (

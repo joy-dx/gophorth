@@ -71,4 +71,4 @@ tasks:
       GOOS: "{{.GOOS}}"
       GOARCH: "{{.GOARCH}}"
     cmds:
-      - go build -ldflags="-s -w -X github.com/joy-dx/gophorth/examples/from-json-url/cmd.BuildID={{.VERSION}}" -trimpath -o "{{.OUT}}" .
+      - go build -ldflags="-s -w -X github.com/joy-dx/gophorth/v2/examples/from-json-url/cmd.BuildID={{.VERSION}}" -trimpath -o "{{.OUT}}" .

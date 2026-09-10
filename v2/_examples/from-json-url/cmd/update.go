@@ -13,12 +13,12 @@ import (
 	"time"
 
 	"github.com/Masterminds/semver/v3"
-	"github.com/joy-dx/gophorth/_examples/from-json-url/config"
-	"github.com/joy-dx/gophorth/_examples/utils"
-	"github.com/joy-dx/gophorth/pkg/releaser/releaserdto"
-	"github.com/joy-dx/gophorth/pkg/updater"
-	"github.com/joy-dx/gophorth/pkg/updater/updaterclients"
-	"github.com/joy-dx/gophorth/pkg/updater/updaterdto"
+	"github.com/joy-dx/gophorth/v2/_examples/from-json-url/config"
+	"github.com/joy-dx/gophorth/v2/_examples/utils"
+	"github.com/joy-dx/gophorth/v2/pkg/releaser/releaserdto"
+	"github.com/joy-dx/gophorth/v2/pkg/updater"
+	"github.com/joy-dx/gophorth/v2/pkg/updater/updaterclients"
+	"github.com/joy-dx/gophorth/v2/pkg/updater/updaterdto"
 	"github.com/joy-dx/relay/v2"
 	"github.com/spf13/cobra"
 )
